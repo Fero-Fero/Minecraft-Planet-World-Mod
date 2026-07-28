@@ -14,14 +14,15 @@ import java.util.List;
  * Storage for context propagation down call stacks.
  * <p>
  * Chunk-map transformer is thread-local so integrated singleplayer's client
- * occlusion graph cannot overwrite the server's wrap context mid-tracking
- * (that caused sparse unloaded chunks near the seam).
+ * occlusion graph cannot overwrite the server's wrap context mid-tracking.
  * <p>
- * Call {@link #clearSessionState()} when a server stops or the client leaves
- * a world so static Level/Server refs cannot pin the whole world in memory.
+ * {@link #noiseXzScale} is the octave scale applied to X/Z before
+ * {@code ImprovedNoise} (e.g. {@code blockX * scale}). The torus mapper divides
+ * it back out so the wrap seam stays continuous for every octave.
  */
 public class TransformerRequests {
 	private static final ThreadLocal<DimensionTransformer> CHUNK_MAP_TRANSFORMER = new ThreadLocal<>();
+	private static final ThreadLocal<Double> NOISE_XZ_SCALE = ThreadLocal.withInitial(() -> 1.0);
 
 	public static MinecraftServer server = null;
 	public static ServerLevel noiseLevel;
@@ -39,12 +40,26 @@ public class TransformerRequests {
 		CHUNK_MAP_TRANSFORMER.remove();
 	}
 
+	public static void setNoiseXzScale(double scale) {
+		NOISE_XZ_SCALE.set(scale == 0.0 ? 1.0 : scale);
+	}
+
+	public static double noiseXzScale() {
+		Double scale = NOISE_XZ_SCALE.get();
+		return scale == null || scale == 0.0 ? 1.0 : scale;
+	}
+
+	public static void clearNoiseXzScale() {
+		NOISE_XZ_SCALE.set(1.0);
+	}
+
 	/** Drop strong refs that would keep a stopped server/world reachable. */
 	public static void clearSessionState() {
 		server = null;
 		noiseLevel = null;
 		structureChunks.clear();
 		CHUNK_MAP_TRANSFORMER.remove();
+		NOISE_XZ_SCALE.remove();
 		DebugInfo.chunkLoadingLevels.clear();
 	}
 }

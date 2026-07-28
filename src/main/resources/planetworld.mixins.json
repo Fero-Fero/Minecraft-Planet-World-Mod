@@ -9,6 +9,7 @@
     "DaylightDetectorBlockMixin",
     "FireBlockMixin",
     "SaplingBlockMixin",
+    "MultiNoiseBiomeSourceMixin",
     "RandomSpreadStructurePlacementMixin",
     "ConcentricRingsStructurePlacementMixin"
   ],

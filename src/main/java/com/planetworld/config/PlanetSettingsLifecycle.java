@@ -2,6 +2,7 @@ package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
 import com.planetworld.network.SyncPlanetSettingsPayload;
+import com.planetworld.worldgen.BiomeStructureCoverage;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.worldgen.StructureCoverage;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
@@ -39,7 +40,7 @@ public final class PlanetSettingsLifecycle {
     }
 
     /**
-     * Activates planet settings early (pending or disk) so complete-coverage structure clamps
+     * Activates planet settings early (pending or disk) so complete-coverage worldgen mixins
      * see the correct style when generators are constructed, then installs wrap bounds
      * for brand-new worlds.
      */
@@ -148,6 +149,7 @@ public final class PlanetSettingsLifecycle {
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        BiomeStructureCoverage.clearCache();
         TransformerRequests.clearSessionState();
         PlanetSettingsAccess.clearActive();
         PlanetSettingsAccess.clearPending();

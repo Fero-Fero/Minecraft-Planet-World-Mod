@@ -22,7 +22,7 @@
   "planetworld.customize.world_gen_style": "World Generation",
   "planetworld.customize.world_gen_style.normal": "Normal",
   "planetworld.customize.world_gen_style.complete": "Complete Coverage",
-  "planetworld.customize.complete_hint": "Vanilla terrain; structures adjusted to fit the planet",
+  "planetworld.customize.complete_hint": "Guarantees every biome patch and structure set can appear",
   "planetworld.customize.localized_time": "Localized Time",
   "planetworld.customize.localized_weather": "Localized Weather",
   "planetworld.customize.invalid": "Invalid settings"

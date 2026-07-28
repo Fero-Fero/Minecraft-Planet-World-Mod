@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Complete coverage: soft-clamp spacing so vanilla structure sets still fit
- * inside the torus (terrain/biomes stay fully vanilla).
+ * Complete coverage: soft-clamp spacing so every random-spread structure set can
+ * place at least once inside the torus period.
  */
 @Mixin(RandomSpreadStructurePlacement.class)
 public abstract class RandomSpreadStructurePlacementMixin {
