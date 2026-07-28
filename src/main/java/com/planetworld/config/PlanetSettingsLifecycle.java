@@ -2,21 +2,15 @@ package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
 import com.planetworld.network.SyncPlanetSettingsPayload;
-import com.planetworld.worldgen.StructureCoverage;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
 import com.planetworld.wrap.options.DimensionWrappingSettings;
 import com.planetworld.wrap.options.WorldWrappingSettings;
 import com.planetworld.wrap.options.WrappingOptions;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
-import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.PrimaryLevelData;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -25,9 +19,6 @@ import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 
 public final class PlanetSettingsLifecycle {
@@ -38,16 +29,12 @@ public final class PlanetSettingsLifecycle {
     }
 
     /**
-     * Activates planet settings early (pending or disk) so continental worldgen mixins
-     * see the correct style when generators are constructed, then installs wrap bounds
-     * for brand-new worlds.
+     * Installs the torus wrapping bounds on the level data before any ServerLevel is
+     * constructed, so the ported Circumnavigate core picks them up at level init.
      */
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        MinecraftServer server = event.getServer();
-        activateSettingsEarly(server);
-
-        if (!(server.getWorldData() instanceof PrimaryLevelData primary)) {
+        if (!(event.getServer().getWorldData() instanceof PrimaryLevelData primary)) {
             return;
         }
         WorldWrappingSettingsAccessor accessor = (WorldWrappingSettingsAccessor) primary;
@@ -61,6 +48,9 @@ public final class PlanetSettingsLifecycle {
         }
 
         PlanetSettings planet = PlanetSettingsAccess.get();
+        // Full torus width in blocks is 2*circumference, so:
+        // fullChunks = (2*circumference)/16 = circumference/8
+        // halfChunks = fullChunks/2 = circumference/16
         int halfChunks = Math.max(1, planet.circumference() / 16);
         DimensionWrappingSettings overworld = new DimensionWrappingSettings(
                 -halfChunks, halfChunks, -halfChunks, halfChunks,
@@ -68,37 +58,8 @@ public final class PlanetSettingsLifecycle {
         accessor.setWorldWrappingSettings(new WorldWrappingSettings(
                 new WrappingOptions(1), Map.of(Level.OVERWORLD, overworld)));
         PlanetWorld.LOGGER.info(
-                "Installed torus wrapping bounds for new world: circumference={} blocks ({} chunks per axis), style={}",
-                planet.circumference(), halfChunks * 2, planet.worldGenStyle());
-    }
-
-    private static void activateSettingsEarly(MinecraftServer server) {
-        PlanetSettings pending = PlanetSettingsAccess.getPending();
-        if (pending != null) {
-            PlanetSettingsAccess.setActive(pending);
-            return;
-        }
-        PlanetSettings fromDisk = tryReadSavedSettings(server);
-        if (fromDisk != null) {
-            PlanetSettingsAccess.setActive(fromDisk);
-        }
-    }
-
-    private static PlanetSettings tryReadSavedSettings(MinecraftServer server) {
-        Path dataFile = server.getWorldPath(LevelResource.ROOT)
-                .resolve("data")
-                .resolve(PlanetWorldSavedData.ID + ".dat");
-        if (!Files.isRegularFile(dataFile)) {
-            return null;
-        }
-        try {
-            CompoundTag root = NbtIo.readCompressed(dataFile, NbtAccounter.unlimitedHeap());
-            CompoundTag data = root.contains("data") ? root.getCompound("data") : root;
-            return PlanetWorldSavedData.load(data, server.registryAccess()).getSettings();
-        } catch (IOException | RuntimeException ex) {
-            PlanetWorld.LOGGER.warn("Could not preload planet settings from {}: {}", dataFile, ex.toString());
-            return null;
-        }
+                "Installed torus wrapping bounds for new world: circumference={} blocks ({} chunks per axis)",
+                planet.circumference(), halfChunks * 2);
     }
 
     @SubscribeEvent
@@ -117,16 +78,14 @@ public final class PlanetSettingsLifecycle {
             storage.set(PlanetWorldSavedData.ID, data);
             data.setDirty();
             PlanetWorld.LOGGER.info(
-                    "Initialized planet settings for new world: circumference={}, style={}",
-                    data.getSettings().circumference(),
-                    data.getSettings().worldGenStyle()
+                    "Initialized planet settings for new world: circumference={}",
+                    data.getSettings().circumference()
             );
         } else {
             PlanetSettingsAccess.clearPending();
         }
 
         PlanetSettingsAccess.setActive(data.getSettings());
-        StructureCoverage.verifyLargeWorld(level);
     }
 
     @SubscribeEvent

@@ -14,11 +14,9 @@ adapted from Fabric to NeoForge. Full license text in `LICENSE`.
 
 | Phase | What it does |
 |-------|----------------|
-| Period | Terrain and biomes wrap on a torus (X and Z) |
-| Curvature | Horizon tilt scales automatically with circumference/360 |
-| Local time | Day/night follows X around the planet |
-| Continental | Optional large-biomes + wider oceans (circumference ≥ 2048) |
-| Structures | Large worlds keep full structure coverage inside the torus |
+| Period | Terrain and biomes repeat every circumference along X |
+| Curvature | Client horizon drop + entity visual offset (hitboxes stay flat) |
+| Local time | `LocalTime = (global + wrapX(x)/width * 24000) % 24000` |
 | Multiplayer | Localized sleep / weather bands |
 | Config | `planetworld-common.toml` |
 
@@ -44,8 +42,7 @@ gradlew.bat runServer
 1. Create World → World Type → **Wrapped Planet**
 2. Click **Customize**:
    - Circumference slider: `256, 512, 1024, … 65536, 102400`
-   - World Generation: **Normal** or **Continental** (Continental needs ≥ 2048)
-   - Curvature tilt is automatic from circumference; feature toggles as needed
+   - Curvature intensity and feature toggles
 3. Click **Done**, then create the world
 
 Skipping Customize uses defaults from `config/planetworld-common.toml` (default circumference **8192**).
@@ -56,6 +53,6 @@ Defaults for new worlds when Customize is not used:
 
 - `planet_circumference` (snapped to slider steps, default 8192)
 - `enable_curvature_shader`
-- `curvature_intensity` (legacy unused; tilt = circumference/360 clamped 0.25–12)
+- `curvature_intensity`
 - `enable_localized_time`
 - `enable_localized_weather`
