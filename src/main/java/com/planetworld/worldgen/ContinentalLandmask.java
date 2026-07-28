@@ -63,14 +63,16 @@ public final class ContinentalLandmask {
 			cont = Mth.lerp((land - 0.45f) / 0.55f, 0.2f, 0.55f);
 		}
 
-		if (land < 0.15f) {
+		if (land < 0.22f) {
 			double period = ContinentalClimate.periodBlocks();
 			double half = period * 0.5;
 			double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
 			double z = ContinentalClimate.wrapToSignedHalf(blockZ, period, half);
-			float island = OpenSimplex2S.noise2(worldSeed ^ SEED_MUSH, x / 120.0, z / 120.0);
-			if (island > 0.93f) {
-				cont = -1.12f; // rare mushroom island
+			// Larger wavelength + softer threshold → slightly bigger mushroom islands
+			float island = OpenSimplex2S.noise2(worldSeed ^ SEED_MUSH, x / 190.0, z / 190.0);
+			if (island > 0.84f) {
+				float mush = smoothstep(0.84f, 0.96f, island);
+				cont = Mth.lerp(mush, cont, -1.12f);
 			}
 		}
 		return Mth.clamp(cont, -1.2f, 1.0f);

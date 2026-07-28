@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Continents >=4096: keep stronghold rings inside the wrap so an End portal exists.
+ * Continents ≥2048: keep stronghold rings inside the wrap so an End portal exists.
  */
 @Mixin(ConcentricRingsStructurePlacement.class)
 public abstract class ConcentricRingsStructurePlacementMixin {
@@ -18,9 +18,20 @@ public abstract class ConcentricRingsStructurePlacementMixin {
 		if (!ContinentalClimate.shouldScaleStructures()) {
 			return;
 		}
-		int maxRing = Math.max(8, PlanetWorldConfig.chunkWidth() / 6);
+		int maxRing = Math.max(4, PlanetWorldConfig.chunkWidth() / 8);
 		if (cir.getReturnValue() > maxRing) {
 			cir.setReturnValue(maxRing);
+		}
+	}
+
+	@Inject(method = "spread", at = @At("RETURN"), cancellable = true)
+	private void planetworld$clampSpread(CallbackInfoReturnable<Integer> cir) {
+		if (!ContinentalClimate.shouldScaleStructures()) {
+			return;
+		}
+		int maxSpread = Math.max(1, PlanetWorldConfig.chunkWidth() / 16);
+		if (cir.getReturnValue() > maxSpread) {
+			cir.setReturnValue(maxSpread);
 		}
 	}
 
@@ -30,7 +41,8 @@ public abstract class ConcentricRingsStructurePlacementMixin {
 			return;
 		}
 		int width = PlanetWorldConfig.chunkWidth();
-		int guaranteed = Math.max(3, Math.min(cir.getReturnValue(), Math.max(3, width / 16)));
+		// At least one stronghold; cap so rings stay inside the torus
+		int guaranteed = Math.max(1, Math.min(cir.getReturnValue(), Math.max(1, width / 24)));
 		cir.setReturnValue(guaranteed);
 	}
 }

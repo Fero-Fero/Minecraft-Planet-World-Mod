@@ -17,11 +17,14 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Sparse one-cell-per-overworld-biome seeds for Continents at circumference &gt;= 4096.
- * Tiny patches only — not a Complete Coverage grid.
+ * Sparse one-cell-per-overworld-biome seeds for Continents ≥2048.
+ * Structure-critical biomes (dark forest, deep dark, mushroom fields) get
+ * larger patches so mansions / ancient cities / mushroom islands can place.
  */
 public final class OverworldBiomeSeedPlacer {
-	private static final int PATCH_RADIUS_BLOCKS = 24;
+	private static final int PATCH_RADIUS_BLOCKS = 28;
+	private static final int STRUCTURE_BIOME_RADIUS_BLOCKS = 112;
+	private static final int MUSHROOM_RADIUS_BLOCKS = 72;
 	private static final long PLACEMENT_SALT = 0x51EEDB10L;
 
 	private OverworldBiomeSeedPlacer() {
@@ -51,11 +54,21 @@ public final class OverworldBiomeSeedPlacer {
 		for (int i = 0; i < n; i++) {
 			ResourceKey<Biome> key = keys.get(i);
 			double[] pos = seedCenter(seed, i, key, period, half, grid, cell);
-			if (shortestDist(x, z, pos[0], pos[1], period) <= PATCH_RADIUS_BLOCKS) {
+			if (shortestDist(x, z, pos[0], pos[1], period) <= patchRadius(key)) {
 				return biomes.get(key).orElse(null);
 			}
 		}
 		return null;
+	}
+
+	private static int patchRadius(ResourceKey<Biome> key) {
+		if (key == Biomes.MUSHROOM_FIELDS) {
+			return MUSHROOM_RADIUS_BLOCKS;
+		}
+		if (key == Biomes.DARK_FOREST || key == Biomes.DEEP_DARK) {
+			return STRUCTURE_BIOME_RADIUS_BLOCKS;
+		}
+		return PATCH_RADIUS_BLOCKS;
 	}
 
 	private static List<ResourceKey<Biome>> overworldBiomeKeys() {
@@ -77,20 +90,30 @@ public final class OverworldBiomeSeedPlacer {
 	) {
 		int gx = index % grid;
 		int gz = index / grid;
-		// Jitter inside cell from seed+index
 		long h = seed ^ ((long) index * 0x9E3779B97F4A7C15L) ^ key.location().hashCode();
 		double jx = (((h >>> 11) & 0xFFFF) / 65535.0 - 0.5) * cell * 0.55;
 		double jz = (((h >>> 27) & 0xFFFF) / 65535.0 - 0.5) * cell * 0.55;
 		double cx = -half + (gx + 0.5) * cell + jx;
 		double cz = -half + (gz + 0.5) * cell + jz;
 
-		// Prefer northern band for cold biomes, southern for tropical
 		float preference = climatePreference(key);
 		if (preference < -0.2f) {
 			cz = Mth.clamp(cz, -half * 0.95, -half * 0.25);
 		} else if (preference > 0.2f) {
 			cz = Mth.clamp(cz, half * 0.25, half * 0.95);
 		}
+
+		if (key == Biomes.DARK_FOREST) {
+			cz = Mth.clamp(cz, -half * 0.35f, half * 0.2f);
+			long landHash = h ^ 0xDA12F02E57L;
+			cx = ContinentalClimate.wrapToSignedHalf(((landHash >>> 9) & 0xFFFF) / 65535.0 * period - half, period, half);
+		} else if (key == Biomes.MUSHROOM_FIELDS) {
+			// Prefer ocean basins (any latitude)
+			long mushHash = h ^ 0xA0151504ADL;
+			cx = ContinentalClimate.wrapToSignedHalf(((mushHash >>> 9) & 0xFFFF) / 65535.0 * period - half, period, half);
+			cz = ContinentalClimate.wrapToSignedHalf(((mushHash >>> 25) & 0xFFFF) / 65535.0 * period - half, period, half);
+		}
+
 		return new double[] {
 				ContinentalClimate.wrapToSignedHalf(cx, period, half),
 				ContinentalClimate.wrapToSignedHalf(cz, period, half)
@@ -114,7 +137,7 @@ public final class OverworldBiomeSeedPlacer {
 			return 1.0f;
 		}
 		if (key == Biomes.MUSHROOM_FIELDS) {
-			return 0.0f; // ocean island — any latitude OK
+			return 0.0f;
 		}
 		return 0.0f;
 	}

@@ -10,9 +10,11 @@
     "FireBlockMixin",
     "SaplingBlockMixin",
     "NoiseBasedChunkGeneratorMixin",
+    "ChunkGeneratorMixin",
     "MultiNoiseBiomeSourceMixin",
     "ConcentricRingsStructurePlacementMixin",
-    "RandomSpreadStructurePlacementMixin"
+    "RandomSpreadStructurePlacementMixin",
+    "StructurePlacementAccessor"
   ],
   "client": [
     "client.LevelRendererMixin",

@@ -2,49 +2,74 @@ package com.planetworld.mixin;
 
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.worldgen.ContinentalClimate;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Continents >=4096: shrink rare large-spacing placements (woodland mansions use 80)
- * so at least one attempt fits inside the wrap. Leaves dense structures alone.
+ * Continents ≥2048: keep random-spread structures inside the wrap so mansions,
+ * monuments, outposts, etc. can actually generate on a finite planet.
  */
 @Mixin(RandomSpreadStructurePlacement.class)
 public abstract class RandomSpreadStructurePlacementMixin {
-	/** Vanilla mansion spacing is 80; ignore common structures with smaller spacing. */
-	private static final int RARE_SPACING_THRESHOLD = 64;
+	@Shadow
+	public abstract RandomSpreadType spreadType();
 
 	@Inject(method = "spacing", at = @At("RETURN"), cancellable = true)
-	private void planetworld$clampRareSpacing(CallbackInfoReturnable<Integer> cir) {
+	private void planetworld$clampSpacing(CallbackInfoReturnable<Integer> cir) {
 		if (!ContinentalClimate.shouldScaleStructures()) {
 			return;
 		}
-		int spacing = cir.getReturnValue();
-		if (spacing < RARE_SPACING_THRESHOLD) {
-			return;
-		}
-		int max = Math.max(8, PlanetWorldConfig.chunkWidth() / 3);
-		if (spacing > max) {
+		int max = maxSpacingChunks();
+		if (cir.getReturnValue() > max) {
 			cir.setReturnValue(max);
 		}
 	}
 
 	@Inject(method = "separation", at = @At("RETURN"), cancellable = true)
-	private void planetworld$clampRareSeparation(CallbackInfoReturnable<Integer> cir) {
+	private void planetworld$clampSeparation(CallbackInfoReturnable<Integer> cir) {
 		if (!ContinentalClimate.shouldScaleStructures()) {
 			return;
 		}
 		RandomSpreadStructurePlacement self = (RandomSpreadStructurePlacement) (Object) this;
-		if (self.spacing() < RARE_SPACING_THRESHOLD) {
-			return;
-		}
-		int spacingCap = Math.max(8, PlanetWorldConfig.chunkWidth() / 3);
-		int maxSep = Math.max(0, spacingCap - 1);
+		int maxSep = Math.max(0, self.spacing() - 1);
 		if (cir.getReturnValue() > maxSep) {
 			cir.setReturnValue(maxSep);
 		}
+	}
+
+	/**
+	 * Vanilla reads raw fields here; re-run with clamped {@link #spacing()}/{@link #separation()}
+	 * so worldgen matches locate.
+	 */
+	@Inject(method = "getPotentialStructureChunk", at = @At("HEAD"), cancellable = true)
+	private void planetworld$clampedPotentialChunk(long seed, int regionX, int regionZ, CallbackInfoReturnable<ChunkPos> cir) {
+		if (!ContinentalClimate.shouldScaleStructures()) {
+			return;
+		}
+		RandomSpreadStructurePlacement self = (RandomSpreadStructurePlacement) (Object) this;
+		int spacing = self.spacing();
+		int separation = self.separation();
+		int i = Math.floorDiv(regionX, spacing);
+		int j = Math.floorDiv(regionZ, spacing);
+		WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(0L));
+		int salt = ((StructurePlacementAccessor) self).planetworld$getSalt();
+		random.setLargeFeatureWithSalt(seed, i, j, salt);
+		int range = Math.max(1, spacing - separation);
+		int ox = this.spreadType().evaluate(random, range);
+		int oz = this.spreadType().evaluate(random, range);
+		cir.setReturnValue(new ChunkPos(i * spacing + ox, j * spacing + oz));
+	}
+
+	/** At least ~4 placement cells across the torus (width/4), never below 12. */
+	private static int maxSpacingChunks() {
+		return Math.max(12, PlanetWorldConfig.chunkWidth() / 4);
 	}
 }

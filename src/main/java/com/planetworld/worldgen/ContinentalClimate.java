@@ -1,5 +1,6 @@
 package com.planetworld.worldgen;
 
+import com.planetworld.config.PlanetSettings;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
@@ -13,8 +14,11 @@ import net.minecraft.world.level.biome.Climate;
  * (north = -Z cold, south = +Z tropical), soft blend at the Z wrap seam.
  */
 public final class ContinentalClimate {
-	/** UI circumference at/above which sparse biome seeds + structure scaling apply. */
-	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = 4096;
+	/**
+	 * Continents at/above this UI circumference get sparse one-of-each biome seeds
+	 * plus structure spacing scaled into the wrap (mansions, strongholds, etc.).
+	 */
+	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE;
 
 	/** How strongly signed latitude overrides vanilla temperature. */
 	private static final float TEMP_BLEND = 0.85f;
@@ -37,7 +41,13 @@ public final class ContinentalClimate {
 				&& PlanetWorldConfig.planetCircumference() >= MIN_FULL_COVERAGE_CIRCUMFERENCE;
 	}
 
+	/** Continents ≥2048: scale rare structure spacing into the wrap. */
 	public static boolean shouldScaleStructures() {
+		return shouldSeedBiomes();
+	}
+
+	/** Same gate as full seeds — structure biomes are included in the sparse grid. */
+	public static boolean shouldSeedStructureBiomes() {
 		return shouldSeedBiomes();
 	}
 
