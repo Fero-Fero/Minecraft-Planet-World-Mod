@@ -40,7 +40,7 @@ public class NormalNoiseMixin {
 
 	@Inject(method = "getValue", at = @At("HEAD"), cancellable = true)
 	public void getValue(double x, double y, double z, CallbackInfoReturnable<Double> cir) {
-		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if (TransformerRequests.useWrappedWorldGen()) {
 			cir.setReturnValue((this.first.getValue(x, y, z) + this.second.getValue(x, y, z)) * this.valueFactor);
 		}
 	}

@@ -50,7 +50,7 @@ public class SurfaceSystemMixin {
 
 	@Inject(method = "erodedBadlandsExtension", at = @At("HEAD"), cancellable = true)
 	private void erodedBadlandsExtension(BlockColumn blockColumn, int x, int z, int height, LevelHeightAccessor level, CallbackInfo ci) {
-		if(!TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(!TransformerRequests.useWrappedWorldGen()) {
 			return;
 		}
 		else {
@@ -90,7 +90,7 @@ public class SurfaceSystemMixin {
 
 	@Inject(method = "frozenOceanExtension", at = @At("HEAD"), cancellable = true)
 	private void frozenOceanExtension(int minSurfaceLevel, Biome biome, BlockColumn blockColumn, BlockPos.MutableBlockPos topWaterPos, int x, int z, int height, CallbackInfo ci) {
-		if(!TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(!TransformerRequests.useWrappedWorldGen()) {
 			return;
 		}
 		else {

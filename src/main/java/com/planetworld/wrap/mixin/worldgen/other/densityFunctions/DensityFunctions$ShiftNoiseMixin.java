@@ -18,7 +18,7 @@ public interface DensityFunctions$ShiftNoiseMixin {
 
 	@Inject(method = "compute", at = @At("HEAD"), cancellable = true)
 	default void compute(double x, double y, double z, CallbackInfoReturnable<Double> cir) {
-		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(TransformerRequests.useWrappedWorldGen()) {
 			cir.setReturnValue(offsetNoise().getValue(x, y * 0.25, z) * 4.0);
 		}
 	}

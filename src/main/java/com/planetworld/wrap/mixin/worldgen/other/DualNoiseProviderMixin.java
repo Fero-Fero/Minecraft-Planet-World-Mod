@@ -22,7 +22,7 @@ public class DualNoiseProviderMixin {
 
 	@Inject(method = "getSlowNoiseValue", at = @At("HEAD"), cancellable = true)
 	public void getSlowNoiseValue(BlockPos pos, CallbackInfoReturnable<Double> cir) {
-		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(TransformerRequests.useWrappedWorldGen()) {
 			cir.setReturnValue(this.slowNoise.getValue((double)((float)pos.getX()), (double)((float)pos.getY() * this.slowScale), (double)((float)pos.getZ())));
 		}
 	}

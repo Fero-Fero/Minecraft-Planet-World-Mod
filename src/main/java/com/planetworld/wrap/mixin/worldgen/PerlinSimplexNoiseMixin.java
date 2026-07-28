@@ -34,7 +34,7 @@ public class PerlinSimplexNoiseMixin {
 
 	@Inject(method = "getValue", at= @At("HEAD"), cancellable = true)
 	public void getValue(double x, double y, boolean useNoiseOffsets, CallbackInfoReturnable<Double> cir) {
-		if(!TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(!TransformerRequests.useWrappedWorldGen()) {
 			return;
 		}
 

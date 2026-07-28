@@ -25,5 +25,6 @@
   "planetworld.customize.continental_requires": "Continental requires circumference ≥ %s",
   "planetworld.customize.localized_time": "Localized Time",
   "planetworld.customize.localized_weather": "Localized Weather",
-  "planetworld.customize.invalid": "Invalid settings"
+  "planetworld.customize.invalid": "Invalid settings",
+  "planetworld.customize.world_gen_style.continental.tooltip": "Large continents, wide oceans, north(-Z) cold / south(+Z) tropical. At 4096+: every overworld biome once, stronghold + woodland mansion."
 }

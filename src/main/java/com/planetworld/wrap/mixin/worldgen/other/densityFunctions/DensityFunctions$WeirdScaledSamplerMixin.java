@@ -22,7 +22,7 @@ public class DensityFunctions$WeirdScaledSamplerMixin {
 
 	@Inject(method = "transform", at = @At("HEAD"), cancellable = true)
 	public void transform(DensityFunction.FunctionContext context, double value, CallbackInfoReturnable<Double> cir) {
-		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(TransformerRequests.useWrappedWorldGen()) {
 			double d = this.rarityValueMapper.mapper.get(value);
 			cir.setReturnValue(Math.abs(this.noise.getValue(context.blockX(), (double)context.blockY() / d, context.blockZ())));
 		}

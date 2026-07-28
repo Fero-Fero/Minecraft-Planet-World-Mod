@@ -21,7 +21,7 @@ public class NoiseBasedStateProviderMixin {
 
 	@Inject(method = "getNoiseValue", at = @At("HEAD"), cancellable = true)
 	public void getNoiseValue(BlockPos pos, double delta, CallbackInfoReturnable<Double> cir) {
-		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(TransformerRequests.useWrappedWorldGen()) {
 			cir.setReturnValue(this.noise.getValue((double)pos.getX(), (double)pos.getY() * delta, (double)pos.getZ()));
 		}
 	}

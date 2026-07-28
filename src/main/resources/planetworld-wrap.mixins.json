@@ -69,6 +69,7 @@
     "worldgen.other.NoiseBasedStateProviderMixin",
     "worldgen.other.SurfaceSystemMixin",
     "worldgen.other.densityFunctions.DensityFunction$NoiseHolderMixin",
+    "worldgen.other.densityFunctions.DensityFunctionNoiseHolderAccessor",
     "worldgen.other.densityFunctions.DensityFunctions$NoiseMixin",
     "worldgen.other.densityFunctions.DensityFunctions$ShiftedNoiseMixin",
     "worldgen.other.densityFunctions.DensityFunctions$ShiftNoiseMixin",
