@@ -16,9 +16,6 @@ import java.util.List;
  * Chunk-map transformer is thread-local so integrated singleplayer's client
  * occlusion graph cannot overwrite the server's wrap context mid-tracking
  * (that caused sparse unloaded chunks near the seam).
- * <p>
- * Call {@link #clearSessionState()} when a server stops or the client leaves
- * a world so static Level/Server refs cannot pin the whole world in memory.
  */
 public class TransformerRequests {
 	private static final ThreadLocal<DimensionTransformer> CHUNK_MAP_TRANSFORMER = new ThreadLocal<>();
@@ -33,18 +30,5 @@ public class TransformerRequests {
 
 	public static void setChunkMapTransformer(DimensionTransformer transformer) {
 		CHUNK_MAP_TRANSFORMER.set(transformer);
-	}
-
-	public static void clearChunkMapTransformer() {
-		CHUNK_MAP_TRANSFORMER.remove();
-	}
-
-	/** Drop strong refs that would keep a stopped server/world reachable. */
-	public static void clearSessionState() {
-		server = null;
-		noiseLevel = null;
-		structureChunks.clear();
-		CHUNK_MAP_TRANSFORMER.remove();
-		DebugInfo.chunkLoadingLevels.clear();
 	}
 }

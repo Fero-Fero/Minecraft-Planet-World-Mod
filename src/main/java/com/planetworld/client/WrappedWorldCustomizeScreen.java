@@ -19,6 +19,7 @@ public class WrappedWorldCustomizeScreen extends Screen {
     private final CreateWorldScreen parent;
     private PlanetSettings settings;
     private int circumferenceStepIndex;
+    private CycleButton<WorldGenStyle> worldGenStyleButton;
     private Component status = CommonComponents.EMPTY;
 
     public WrappedWorldCustomizeScreen(CreateWorldScreen parent) {
@@ -40,15 +41,25 @@ public class WrappedWorldCustomizeScreen extends Screen {
         ));
 
         y += 72;
-        this.addRenderableWidget(CycleButton.builder(this::styleLabel)
-                .withValues(WorldGenStyle.NORMAL, WorldGenStyle.COMPLETE)
+        this.worldGenStyleButton = CycleButton.builder(this::styleLabel)
+                .withValues(WorldGenStyle.NORMAL, WorldGenStyle.CONTINENTAL)
                 .withInitialValue(this.settings.worldGenStyle())
                 .create(centerX - 110, y, 220, 20,
                         Component.translatable("planetworld.customize.world_gen_style"),
                         (b, value) -> {
+                            if (value == WorldGenStyle.CONTINENTAL && !currentAllowsContinental()) {
+                                this.status = Component.translatable(
+                                        "planetworld.customize.continental_requires",
+                                        PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE);
+                                b.setValue(WorldGenStyle.NORMAL);
+                                this.settings = this.settings.withWorldGenStyle(WorldGenStyle.NORMAL);
+                                return;
+                            }
                             this.status = CommonComponents.EMPTY;
                             this.settings = this.settings.withWorldGenStyle(value);
-                        }));
+                        });
+        this.addRenderableWidget(this.worldGenStyleButton);
+        refreshWorldGenStyleActive();
 
         y += 28;
         this.addRenderableWidget(CycleButton.onOffBuilder(this.settings.curvatureShader())
@@ -78,9 +89,32 @@ public class WrappedWorldCustomizeScreen extends Screen {
         return Component.translatable("planetworld.customize.world_gen_style." + style.name().toLowerCase());
     }
 
+    private boolean currentAllowsContinental() {
+        int circumference = PlanetSettings.CIRCUMFERENCE_STEPS[this.circumferenceStepIndex];
+        return circumference >= PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE;
+    }
+
+    private void refreshWorldGenStyleActive() {
+        if (this.worldGenStyleButton == null) {
+            return;
+        }
+        boolean allow = currentAllowsContinental();
+        this.worldGenStyleButton.active = true;
+        if (!allow && this.settings.worldGenStyle() == WorldGenStyle.CONTINENTAL) {
+            this.settings = this.settings.withWorldGenStyle(WorldGenStyle.NORMAL);
+            this.worldGenStyleButton.setValue(WorldGenStyle.NORMAL);
+        }
+    }
+
     private void onDone() {
         int circumference = PlanetSettings.CIRCUMFERENCE_STEPS[this.circumferenceStepIndex];
-        this.settings = this.settings.withCircumference(circumference);
+        WorldGenStyle style = this.settings.worldGenStyle();
+        if (circumference < PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE) {
+            style = WorldGenStyle.NORMAL;
+        }
+        this.settings = this.settings
+                .withCircumference(circumference)
+                .withWorldGenStyle(style);
         PlanetSettingsAccess.setPending(this.settings);
         this.minecraft.setScreen(this.parent);
     }
@@ -110,14 +144,16 @@ public class WrappedWorldCustomizeScreen extends Screen {
                         circumference),
                 centerX, 88, 0xC0C0C0);
 
-        float pct = PlanetSettings.physicalCurvePercentAt(circumference, 64.0);
+        float tilt = PlanetSettings.effectiveCurvatureIntensityFor(circumference);
         graphics.drawCenteredString(this.font, Component.translatable(
                         "planetworld.customize.curvature_auto",
-                        String.format("%.1f", pct)),
+                        String.format("%.2f", tilt)),
                 centerX, 100, 0xA0A0A0);
 
-        if (this.settings.worldGenStyle() == WorldGenStyle.COMPLETE) {
-            graphics.drawCenteredString(this.font, Component.translatable("planetworld.customize.complete_hint"),
+        if (!currentAllowsContinental()) {
+            graphics.drawCenteredString(this.font, Component.translatable(
+                            "planetworld.customize.continental_requires",
+                            PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE),
                     centerX, 112, 0x808080);
         }
 
@@ -147,6 +183,7 @@ public class WrappedWorldCustomizeScreen extends Screen {
             WrappedWorldCustomizeScreen.this.circumferenceStepIndex = index;
             this.value = index / (double) last;
             updateMessage();
+            WrappedWorldCustomizeScreen.this.refreshWorldGenStyleActive();
             WrappedWorldCustomizeScreen.this.status = CommonComponents.EMPTY;
         }
     }

@@ -14,11 +14,11 @@ public final class PlanetWorldConfig {
             .defineInRange("planet_circumference", 8192, PlanetSettings.MIN_CIRCUMFERENCE, PlanetSettings.MAX_CIRCUMFERENCE);
 
     public static final ModConfigSpec.BooleanValue ENABLE_CURVATURE_SHADER = BUILDER
-            .comment("Default: enable physically realistic horizon curvature on the client.")
+            .comment("Default: enable Animal Crossing-style horizon curvature on the client.")
             .define("enable_curvature_shader", true);
 
     public static final ModConfigSpec.DoubleValue CURVATURE_INTENSITY = BUILDER
-            .comment("Legacy unused: curvature is physical (drop = d^2/(2R)). Kept for config file compatibility.")
+            .comment("Legacy unused: curvature intensity is derived as circumference/360 (clamped 0.25–12). Kept for config file compatibility.")
             .defineInRange("curvature_intensity", 1.0, 0.1, 10.0);
 
     public static final ModConfigSpec.BooleanValue ENABLE_LOCALIZED_TIME = BUILDER
@@ -54,7 +54,6 @@ public final class PlanetWorldConfig {
         return PlanetSettingsAccess.get().curvatureShader();
     }
 
-    /** Unused by the shader (physical radius only); retained for API compatibility. */
     public static float curvatureIntensity() {
         return PlanetSettingsAccess.get().effectiveCurvatureIntensity();
     }
@@ -63,8 +62,8 @@ public final class PlanetWorldConfig {
         return PlanetSettingsAccess.get().worldGenStyle();
     }
 
-    public static boolean isCompleteCoverage() {
-        return PlanetSettingsAccess.get().isCompleteCoverage();
+    public static boolean isContinental() {
+        return PlanetSettingsAccess.get().isContinental();
     }
 
     public static boolean enableLocalizedTime() {

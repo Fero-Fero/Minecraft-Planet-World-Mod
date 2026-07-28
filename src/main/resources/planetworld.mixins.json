@@ -9,6 +9,8 @@
     "DaylightDetectorBlockMixin",
     "FireBlockMixin",
     "SaplingBlockMixin",
+    "NoiseBasedChunkGeneratorMixin",
+    "MultiNoiseBiomeSourceMixin",
     "RandomSpreadStructurePlacementMixin",
     "ConcentricRingsStructurePlacementMixin"
   ],
@@ -16,8 +18,7 @@
     "client.LevelRendererMixin",
     "client.ClientLevelMixin",
     "client.EntityRenderDispatcherMixin",
-    "client.RainRenderGateMixin",
-    "client.ShaderInstanceMixin"
+    "client.RainRenderGateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

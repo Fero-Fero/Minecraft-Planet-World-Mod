@@ -21,26 +21,15 @@ public record SyncPlanetSettingsPayload(
     public static final Type<SyncPlanetSettingsPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(PlanetWorld.MOD_ID, "sync_settings"));
 
-    // StreamCodec.composite supports at most 6 fields in 1.21.1 — use a manual codec.
-    public static final StreamCodec<ByteBuf, SyncPlanetSettingsPayload> STREAM_CODEC = StreamCodec.of(
-            (buf, payload) -> {
-                ByteBufCodecs.VAR_INT.encode(buf, payload.circumference());
-                ByteBufCodecs.FLOAT.encode(buf, payload.curvatureIntensity());
-                ByteBufCodecs.BOOL.encode(buf, payload.localizedTime());
-                ByteBufCodecs.BOOL.encode(buf, payload.localizedWeather());
-                ByteBufCodecs.BOOL.encode(buf, payload.entityWrap());
-                ByteBufCodecs.BOOL.encode(buf, payload.curvatureShader());
-                ByteBufCodecs.VAR_INT.encode(buf, payload.worldGenStyleOrdinal());
-            },
-            buf -> new SyncPlanetSettingsPayload(
-                    ByteBufCodecs.VAR_INT.decode(buf),
-                    ByteBufCodecs.FLOAT.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf),
-                    ByteBufCodecs.VAR_INT.decode(buf)
-            )
+    public static final StreamCodec<ByteBuf, SyncPlanetSettingsPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, SyncPlanetSettingsPayload::circumference,
+            ByteBufCodecs.FLOAT, SyncPlanetSettingsPayload::curvatureIntensity,
+            ByteBufCodecs.BOOL, SyncPlanetSettingsPayload::localizedTime,
+            ByteBufCodecs.BOOL, SyncPlanetSettingsPayload::localizedWeather,
+            ByteBufCodecs.BOOL, SyncPlanetSettingsPayload::entityWrap,
+            ByteBufCodecs.BOOL, SyncPlanetSettingsPayload::curvatureShader,
+            ByteBufCodecs.VAR_INT, SyncPlanetSettingsPayload::worldGenStyleOrdinal,
+            SyncPlanetSettingsPayload::new
     );
 
     public SyncPlanetSettingsPayload(PlanetSettings settings) {

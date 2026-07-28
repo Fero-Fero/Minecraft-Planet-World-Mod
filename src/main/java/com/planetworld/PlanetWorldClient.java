@@ -2,7 +2,6 @@ package com.planetworld;
 
 import com.planetworld.client.WrappedWorldCustomizeScreen;
 import com.planetworld.config.PlanetSettingsAccess;
-import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.render.LocalSkyHandler;
@@ -39,8 +38,6 @@ public class PlanetWorldClient {
     }
 
     private void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        TransformerRequests.clearChunkMapTransformer();
         PlanetSettingsAccess.clearActive();
     }
 }
-

@@ -4,8 +4,8 @@ package com.planetworld.config;
  * Per-world planet settings chosen at world creation (or loaded from disk / synced to clients).
  * Circumference snaps to discrete doubling steps from {@link #MIN_CIRCUMFERENCE} to {@link #MAX_CIRCUMFERENCE}.
  * <p>
- * {@code curvatureIntensity} is kept for save/sync compatibility. Runtime curvature is purely physical
- * ({@code drop = d^2 / (2R)} with {@code R = circumference / pi}).
+ * {@code curvatureIntensity} is kept for save/sync compatibility but runtime curvature uses
+ * {@link #effectiveCurvatureIntensity()} derived from circumference.
  */
 public record PlanetSettings(
         int circumference,
@@ -18,6 +18,8 @@ public record PlanetSettings(
 ) {
     public static final int MIN_CIRCUMFERENCE = 256;
     public static final int MAX_CIRCUMFERENCE = 102_400;
+    /** Continental climate is only offered at or above this half-period size. */
+    public static final int MIN_CONTINENTAL_CIRCUMFERENCE = 2048;
 
     /** Discrete slider steps: 256, 512, … 65536, then 102400. */
     public static final int[] CIRCUMFERENCE_STEPS = {
@@ -27,38 +29,30 @@ public record PlanetSettings(
     public PlanetSettings {
         circumference = snapCircumference(circumference);
         worldGenStyle = worldGenStyle == null ? WorldGenStyle.NORMAL : worldGenStyle;
-        // Persist a display hint; shader uses physical radius only.
-        curvatureIntensity = physicalCurvePercentAt(circumference, 64.0);
-    }
-
-    /**
-     * Approximate vertical drop as a percent of horizontal distance at {@code distanceBlocks}
-     * for a sphere of radius {@code C / pi}: {@code 100 * d / (2R)}.
-     */
-    public static float physicalCurvePercentAt(int circumferenceBlocks, double distanceBlocks) {
-        int snapped = snapCircumference(circumferenceBlocks);
-        double radius = Math.max(1.0, snapped / Math.PI);
-        if (distanceBlocks <= 0.0) {
-            return 0f;
+        if (circumference < MIN_CONTINENTAL_CIRCUMFERENCE) {
+            worldGenStyle = WorldGenStyle.NORMAL;
         }
-        double drop = (distanceBlocks * distanceBlocks) / (2.0 * radius);
-        return (float) (100.0 * drop / distanceBlocks);
+        // Persist the auto-derived intensity so NBT/config stay consistent with runtime.
+        curvatureIntensity = effectiveCurvatureIntensityFor(circumference);
     }
 
-    /** @deprecated Use {@link #physicalCurvePercentAt(int, double)}; kept for callers/UI. */
-    @Deprecated
+    /** Runtime / display intensity: {@code clamp(circumference / 360, 0.25, 12)}. */
     public float effectiveCurvatureIntensity() {
-        return physicalCurvePercentAt(circumference, 64.0);
+        return effectiveCurvatureIntensityFor(circumference);
     }
 
-    /** @deprecated Use {@link #physicalCurvePercentAt(int, double)}. */
-    @Deprecated
     public static float effectiveCurvatureIntensityFor(int circumferenceBlocks) {
-        return physicalCurvePercentAt(circumferenceBlocks, 64.0);
+        int snapped = snapCircumference(circumferenceBlocks);
+        float raw = snapped / 360.0f;
+        return Math.max(0.25f, Math.min(12.0f, raw));
     }
 
-    public boolean isCompleteCoverage() {
-        return worldGenStyle == WorldGenStyle.COMPLETE;
+    public boolean allowsContinental() {
+        return circumference >= MIN_CONTINENTAL_CIRCUMFERENCE;
+    }
+
+    public boolean isContinental() {
+        return worldGenStyle == WorldGenStyle.CONTINENTAL && allowsContinental();
     }
 
     /** Snap to the nearest allowed circumference step. */
@@ -93,7 +87,7 @@ public record PlanetSettings(
         int circumference = PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt();
         return new PlanetSettings(
                 circumference,
-                physicalCurvePercentAt(circumference, 64.0),
+                effectiveCurvatureIntensityFor(circumference),
                 PlanetWorldConfig.ENABLE_LOCALIZED_TIME.getAsBoolean(),
                 PlanetWorldConfig.ENABLE_LOCALIZED_WEATHER.getAsBoolean(),
                 PlanetWorldConfig.ENABLE_ENTITY_WRAP.getAsBoolean(),
@@ -103,10 +97,14 @@ public record PlanetSettings(
     }
 
     public double halfCircumference() {
+        // `circumference` in UI/config is treated as the *half-period* (what you
+        // asked for: e.g. seam effects around x=±256 inside a 512-wide world).
         return circumference;
     }
 
     public int chunkWidth() {
+        // `chunkWidth()` is the full torus width in chunks.
+        // fullBlocks = 2*circumference, so fullChunks = (2*circumference)/16 = circumference/8
         return Math.max(1, circumference / 8);
     }
 
@@ -115,6 +113,7 @@ public record PlanetSettings(
     }
 
     public PlanetSettings withCurvatureIntensity(float value) {
+        // Intensity is auto-derived; keep API for callers but ignore manual value.
         return new PlanetSettings(circumference, value, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle);
     }
 
