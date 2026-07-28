@@ -1,6 +1,7 @@
 package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
+import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.network.SyncPlanetSettingsPayload;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
 import com.planetworld.wrap.options.DimensionWrappingSettings;
@@ -96,8 +97,17 @@ public final class PlanetSettingsLifecycle {
         PacketDistributor.sendToPlayer(player, new SyncPlanetSettingsPayload(PlanetSettingsAccess.get()));
     }
 
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level && TransformerRequests.noiseLevel == level) {
+            TransformerRequests.noiseLevel = null;
+        }
+    }
+
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        TransformerRequests.clearSessionState();
         PlanetSettingsAccess.clearActive();
         PlanetSettingsAccess.clearPending();
     }

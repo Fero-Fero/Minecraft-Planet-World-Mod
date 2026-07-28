@@ -14,7 +14,8 @@
     "client.LevelRendererMixin",
     "client.ClientLevelMixin",
     "client.EntityRenderDispatcherMixin",
-    "client.RainRenderGateMixin"
+    "client.RainRenderGateMixin",
+    "client.ShaderInstanceMixin"
   ],
   "injectors": {
     "defaultRequire": 1

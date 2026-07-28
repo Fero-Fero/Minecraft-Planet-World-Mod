@@ -144,10 +144,10 @@ public class WrappedWorldCustomizeScreen extends Screen {
                         circumference),
                 centerX, 88, 0xC0C0C0);
 
-        float tilt = PlanetSettings.effectiveCurvatureIntensityFor(circumference);
+        float pct = PlanetSettings.effectiveCurvatureIntensityFor(circumference);
         graphics.drawCenteredString(this.font, Component.translatable(
                         "planetworld.customize.curvature_auto",
-                        String.format("%.2f", tilt)),
+                        String.format("%.1f", pct)),
                 centerX, 100, 0xA0A0A0);
 
         if (!currentAllowsContinental()) {

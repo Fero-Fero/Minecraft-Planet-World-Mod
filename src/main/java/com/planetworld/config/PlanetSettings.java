@@ -4,8 +4,7 @@ package com.planetworld.config;
  * Per-world planet settings chosen at world creation (or loaded from disk / synced to clients).
  * Circumference snaps to discrete doubling steps from {@link #MIN_CIRCUMFERENCE} to {@link #MAX_CIRCUMFERENCE}.
  * <p>
- * {@code curvatureIntensity} is kept for save/sync compatibility but runtime curvature uses
- * {@link #effectiveCurvatureIntensity()} derived from circumference.
+ * {@code curvatureIntensity} is kept for save/sync compatibility but runtime curvature is physical {@code d^2/(2R)}; intensity field stores a UI percent hint.
  */
 public record PlanetSettings(
         int circumference,
@@ -36,15 +35,20 @@ public record PlanetSettings(
         curvatureIntensity = effectiveCurvatureIntensityFor(circumference);
     }
 
-    /** Runtime / display intensity: {@code clamp(circumference / 360, 0.25, 12)}. */
+    /**
+     * Display helper: physical curve percent at 64 blocks ({@code 100 * d / (2R)}).
+     * Shader uses {@code drop = d^2/(2R)} directly (no intensity boost).
+     */
     public float effectiveCurvatureIntensity() {
         return effectiveCurvatureIntensityFor(circumference);
     }
 
     public static float effectiveCurvatureIntensityFor(int circumferenceBlocks) {
         int snapped = snapCircumference(circumferenceBlocks);
-        float raw = snapped / 360.0f;
-        return Math.max(0.25f, Math.min(12.0f, raw));
+        double radius = Math.max(1.0, snapped / Math.PI);
+        double distance = 64.0;
+        double drop = (distance * distance) / (2.0 * radius);
+        return (float) (100.0 * drop / distance);
     }
 
     public boolean allowsContinental() {

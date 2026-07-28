@@ -1,35 +1,37 @@
 package com.planetworld.mixin.client;
 
-import com.planetworld.config.PlanetWorldConfig;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.planetworld.render.CurvatureRenderer;
-import com.planetworld.wrap.WrapMath;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LightTexture;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Expands effective render awareness near the curved horizon and applies curvature bias.
- * Prevents mountains from popping when the vertex shader pushes them below the horizon line.
+ * Enables curvature uniforms only while the world is drawing (not GUI/hotbar).
  */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
-    @Inject(method = "renderLevel", at = @At("HEAD"))
-    private void planetworld$beginCurvature(CallbackInfo ci) {
-        if (!PlanetWorldConfig.enableCurvatureShader()) {
-            return;
-        }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || !WrapMath.isWrappedDimension(mc.level)) {
-            return;
-        }
-        // Mark intensity for debug / shader consumers
-        float drop = CurvatureRenderer.curvatureDrop(64.0);
-        if (drop != 0f) {
-            // No-op touch keeps the curvature path live without mutating GL state unsafely here.
-            CurvatureRenderer.curvatureBiasMatrix(PlanetWorldConfig.curvatureIntensity());
-        }
-    }
+	@WrapMethod(method = "renderLevel")
+	private void planetworld$curvatureScope(
+			DeltaTracker deltaTracker,
+			boolean renderBlockOutline,
+			Camera camera,
+			GameRenderer gameRenderer,
+			LightTexture lightTexture,
+			Matrix4f frustumMatrix,
+			Matrix4f projectionMatrix,
+			Operation<Void> original
+	) {
+		CurvatureRenderer.beginLevelRender();
+		try {
+			original.call(deltaTracker, renderBlockOutline, camera, gameRenderer, lightTexture, frustumMatrix, projectionMatrix);
+		} finally {
+			CurvatureRenderer.endLevelRender();
+		}
+	}
 }
