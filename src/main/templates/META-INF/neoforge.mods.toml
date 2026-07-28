@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="Planet World"
+description='''
+Transforms the Overworld into a finite, seamlessly wrapped torus planet with
+localized time, localized weather, and curved horizon rendering.
+World-wrapping core ported from Circumnavigate by Famro Fexl (AGPL-3.0).
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[mixins]]
+config="${mod_id}-wrap.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

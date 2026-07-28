@@ -1,0 +1,27 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package com.planetworld.wrap.mixin.propagators.chunkTracker.providers;
+
+import com.planetworld.wrap.accessors.TransformerAccessor;
+import com.planetworld.wrap.core.DimensionTransformer;
+import com.planetworld.wrap.mixin.chunk.SectionTrackerMixin;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiSection;
+import net.minecraft.world.level.chunk.storage.SectionStorage;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(targets = "net.minecraft.world.entity.ai.village.poi.PoiManager$DistanceTracker")
+public class PoiManager$DistanceTracker extends SectionTrackerMixin {
+	@Inject(method = "<init>", at = @At("TAIL"))
+	public void init(PoiManager poiManager, CallbackInfo ci) {
+		//This is only initialized in ChunkMap with a ServerLevel, which is why we can assume it is a ServerLevel
+		DimensionTransformer transformer = ((ServerLevel)((SectionStorage<PoiSection>) poiManager).levelHeightAccessor).getTransformer();
+		((TransformerAccessor) this).setTransformer(transformer);
+	}
+}
