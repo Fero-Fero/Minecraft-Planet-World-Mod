@@ -2,6 +2,7 @@ package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
 import com.planetworld.network.SyncPlanetSettingsPayload;
+import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.worldgen.StructureCoverage;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
 import com.planetworld.wrap.options.DimensionWrappingSettings;
@@ -38,7 +39,7 @@ public final class PlanetSettingsLifecycle {
     }
 
     /**
-     * Activates planet settings early (pending or disk) so continental worldgen mixins
+     * Activates planet settings early (pending or disk) so complete-coverage structure clamps
      * see the correct style when generators are constructed, then installs wrap bounds
      * for brand-new worlds.
      */
@@ -126,7 +127,7 @@ public final class PlanetSettingsLifecycle {
         }
 
         PlanetSettingsAccess.setActive(data.getSettings());
-        StructureCoverage.verifyLargeWorld(level);
+        StructureCoverage.verifyCompleteCoverage(level);
     }
 
     @SubscribeEvent
@@ -137,9 +138,19 @@ public final class PlanetSettingsLifecycle {
         PacketDistributor.sendToPlayer(player, new SyncPlanetSettingsPayload(PlanetSettingsAccess.get()));
     }
 
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level && TransformerRequests.noiseLevel == level) {
+            TransformerRequests.noiseLevel = null;
+        }
+    }
+
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        TransformerRequests.clearSessionState();
         PlanetSettingsAccess.clearActive();
         PlanetSettingsAccess.clearPending();
     }
 }
+

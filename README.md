@@ -15,10 +15,10 @@ adapted from Fabric to NeoForge. Full license text in `LICENSE`.
 | Phase | What it does |
 |-------|----------------|
 | Period | Terrain and biomes wrap on a torus (X and Z) |
-| Curvature | Horizon tilt scales automatically with circumference/360 |
+| Curvature | Physical sphere drop (d²/2R); large planets look nearly flat |
 | Local time | Day/night follows X around the planet |
-| Continental | Optional large-biomes + wider oceans (circumference ≥ 2048) |
-| Structures | Large worlds keep full structure coverage inside the torus |
+| Complete Coverage | Vanilla Minecraft terrain, with light structure tweaks so sets fit the wrap |
+| Structures | Soft clamps so vanilla structures still place inside the torus |
 | Multiplayer | Localized sleep / weather bands |
 | Config | `planetworld-common.toml` |
 
@@ -44,12 +44,18 @@ gradlew.bat runServer
 1. Create World → World Type → **Wrapped Planet**
 2. Click **Customize**:
    - Circumference slider: `256, 512, 1024, … 65536, 102400`
-   - World Generation: **Normal** or **Continental** (Continental needs ≥ 2048)
+   - World Generation: **Normal** or **Complete Coverage**
    - Curvature tilt is automatic from circumference; feature toggles as needed
 3. Click **Done**, then create the world
 
 Skipping Customize uses defaults from `config/planetworld-common.toml` (default circumference **8192**).
 
+
+## Curvature notes
+
+- Works with the **vanilla** renderer (core shader overrides).
+- **Sodium / Iris / Oculus** replace those shaders — curvature will not show unless a compatible shader pack adds the same drop.
+- Press F3+T after updating the mod if an old resource cache sticks.
 ## Config (`config/planetworld-common.toml`)
 
 Defaults for new worlds when Customize is not used:

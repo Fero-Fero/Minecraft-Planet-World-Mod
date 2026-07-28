@@ -8,6 +8,7 @@ import net.minecraft.world.level.ChunkPos;
 
 import java.util.HashMap;
 
+/** Optional debug maps; always cleared via {@link TransformerRequests#clearSessionState()}. */
 public class DebugInfo {
-	public static HashMap<ChunkPos, Integer> chunkLoadingLevels = new HashMap<>();
+	public static final HashMap<ChunkPos, Integer> chunkLoadingLevels = new HashMap<>();
 }
