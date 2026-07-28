@@ -17,7 +17,7 @@ adapted from Fabric to NeoForge. Full license text in `LICENSE`.
 | Period | Terrain and biomes wrap on a torus (X and Z) |
 | Curvature | Physical sphere drop (d²/2R); large planets look nearly flat |
 | Local time | Day/night follows X around the planet |
-| Complete Coverage | Ensures every biome and structure set can appear on the planet |
+| Complete Coverage | Vanilla Minecraft terrain, with light structure tweaks so sets fit the wrap |
 | Structures | Soft clamps so vanilla structures still place inside the torus |
 | Multiplayer | Localized sleep / weather bands |
 | Config | `planetworld-common.toml` |

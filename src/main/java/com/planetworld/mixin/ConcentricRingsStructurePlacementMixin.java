@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Complete coverage: clamp stronghold ring distance so rings stay inside the wrap.
+ * Complete coverage: clamp stronghold ring distance to the wrap (vanilla terrain).
  */
 @Mixin(ConcentricRingsStructurePlacement.class)
 public abstract class ConcentricRingsStructurePlacementMixin {

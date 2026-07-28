@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: AGPL-3.0-only */
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
 package com.planetworld.wrap.mixin.worldgen;
 
@@ -17,11 +19,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Same structure as vanilla {@link BlendedNoise}, but passes blockX/Z * octave into
- * {@link ImprovedNoise} with {@link TransformerRequests#setNoiseXzScale(double)} so
- * the torus mapper can keep the wrap seam continuous.
- */
 @Mixin(BlendedNoise.class)
 public class BlendedNoiseMixin {
 	@Shadow @Final private PerlinNoise minLimitNoise;
@@ -32,15 +29,26 @@ public class BlendedNoiseMixin {
 	@Shadow @Final private double xzFactor;
 	@Shadow @Final private double yFactor;
 	@Shadow @Final private double smearScaleMultiplier;
+	@Shadow @Final private double maxValue;
+	@Shadow @Final private double xzScale;
+	@Shadow @Final private double yScale;
+
+	private final double xWidth = 256.0;
+	private final double zWidth = 256.0;
+
+	private long source;
+
+	private long lastTime = 0;
 
 	@Inject(method = "<init>(Lnet/minecraft/util/RandomSource;DDDDD)V", at = @At("TAIL"))
 	public void init(RandomSource random, double xzScale, double yScale, double xzFactor, double yFactor, double smearScaleMultiplier, CallbackInfo ci) {
+		source = random.nextLong();
 	}
+
 
 	@Inject(method = "compute", at = @At("HEAD"), cancellable = true)
 	public void compute(DensityFunction.FunctionContext context, CallbackInfoReturnable<Double> cir) {
-		if (TransformerRequests.noiseLevel == null
-				|| !TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+		if(!TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
 			return;
 		}
 
@@ -55,52 +63,45 @@ public class BlendedNoiseMixin {
 		double l = 0.0;
 		double m = 0.0;
 		double n = 0.0;
+		boolean bl = true;
 		double o = 1.0;
 
-		try {
-			for (int p = 0; p < 8; p++) {
-				ImprovedNoise improvedNoise = this.mainNoise.getOctaveNoise(p);
-				if (improvedNoise != null) {
-					TransformerRequests.setNoiseXzScale(o);
-					n += improvedNoise.noise(
-							context.blockX() * o,
-							PerlinNoise.wrap(h * o),
-							context.blockZ() * o,
-							k * o,
-							h * o
-					) / o;
-				}
-				o /= 2.0;
+		for (int p = 0; p < 8; p++) {
+			ImprovedNoise improvedNoise = this.mainNoise.getOctaveNoise(p);
+			if (improvedNoise != null) {
+				n += improvedNoise.noise(context.blockX(), PerlinNoise.wrap(h * o), context.blockZ(), k * o, h * o) / o;
 			}
 
-			double q = (n / 10.0 + 1.0) / 2.0;
-			boolean bl2 = q >= 1.0;
-			boolean bl3 = q <= 0.0;
-			o = 1.0;
-
-			for (int r = 0; r < 16; r++) {
-				double t = PerlinNoise.wrap(e * o);
-				double v = j * o;
-				if (!bl2) {
-					ImprovedNoise improvedNoise2 = this.minLimitNoise.getOctaveNoise(r);
-					if (improvedNoise2 != null) {
-						TransformerRequests.setNoiseXzScale(o);
-						l += improvedNoise2.noise(context.blockX() * o, t, context.blockZ() * o, v, e * o) / o;
-					}
-				}
-				if (!bl3) {
-					ImprovedNoise improvedNoise2 = this.maxLimitNoise.getOctaveNoise(r);
-					if (improvedNoise2 != null) {
-						TransformerRequests.setNoiseXzScale(o);
-						m += improvedNoise2.noise(context.blockX() * o, t, context.blockZ() * o, v, e * o) / o;
-					}
-				}
-				o /= 2.0;
-			}
-
-			cir.setReturnValue(Mth.clampedLerp(l / 512.0, m / 512.0, q) / 128.0);
-		} finally {
-			TransformerRequests.clearNoiseXzScale();
+			o /= 2.0;
 		}
+
+		double q = (n / 10.0 + 1.0) / 2.0;
+		boolean bl2 = q >= 1.0;
+		boolean bl3 = q <= 0.0;
+		o = 1.0;
+
+		for (int r = 0; r < 16; r++) {
+			double s = d * o; //PerlinNoise.wrap(d * o);
+			double t = PerlinNoise.wrap(e * o);
+			double u = PerlinNoise.wrap(f * o);
+			double v = j * o;
+			if (!bl2) {
+				ImprovedNoise improvedNoise2 = this.minLimitNoise.getOctaveNoise(r);
+				if (improvedNoise2 != null) {
+					l += improvedNoise2.noise(context.blockX(), t, context.blockZ(), v, e * o) / o;
+				}
+			}
+
+			if (!bl3) {
+				ImprovedNoise improvedNoise2 = this.maxLimitNoise.getOctaveNoise(r);
+				if (improvedNoise2 != null) {
+					m += improvedNoise2.noise(context.blockX(), t, context.blockZ(), v, e * o) / o;
+				}
+			}
+
+			o /= 2.0;
+		}
+
+		cir.setReturnValue(Mth.clampedLerp(l / 512.0, m / 512.0, q) / 128.0);
 	}
 }

@@ -2,9 +2,9 @@ package com.planetworld.config;
 
 /**
  * Overworld generation style chosen at world creation.
- * NORMAL is vanilla climate/structure density (with wrap-safe clamps as needed).
- * COMPLETE reserves patches so every overworld biome appears at least once and
- * tightens structure spacing so each structure set can place inside the torus.
+ * NORMAL is vanilla Minecraft generation.
+ * COMPLETE is the same vanilla terrain/biomes, with light structure-placement
+ * clamps so every structure set can still fit inside the wrapped planet.
  */
 public enum WorldGenStyle {
     NORMAL,

@@ -1,4 +1,10 @@
-/* SPDX-License-Identifier: AGPL-3.0-only */
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
 package com.planetworld.wrap.mixin.worldgen;
 
@@ -21,18 +27,23 @@ public class NormalNoiseMixin {
 	@Shadow @Final private PerlinNoise second;
 
 	@Shadow @Final private double maxValue;
+	private final double xWidth = 256.0;
+	private final double zWidth = 256.0;
 
+	private long lastTime = 0;
+
+	private long source;
 	@Inject(method = "<init>", at = @At("TAIL"))
 	public void init(RandomSource random, NormalNoise.NoiseParameters parameters, boolean useLegacyNetherBiome, CallbackInfo ci) {
+		source = random.nextLong();
 	}
 
 	@Inject(method = "getValue", at = @At("HEAD"), cancellable = true)
 	public void getValue(double x, double y, double z, CallbackInfoReturnable<Double> cir) {
-		if (TransformerRequests.noiseLevel == null
-				|| TransformerRequests.noiseLevel.getTransformer() == null
-				|| !TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
-			return;
+		if(TransformerRequests.noiseLevel.getTransformer().wrappingSettings.useWrappedWorldGen()) {
+			cir.setReturnValue((this.first.getValue(x, y, z) + this.second.getValue(x, y, z)) * this.valueFactor);
 		}
-		cir.setReturnValue((this.first.getValue(x, y, z) + this.second.getValue(x, y, z)) * this.valueFactor);
 	}
+
+
 }
