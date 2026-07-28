@@ -134,6 +134,7 @@ public final class PlanetSettingsLifecycle {
 				data.getSettings().isContinental(),
 				data.getSettings().circumference()
 		);
+	}
 
 	@SubscribeEvent
 	public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
