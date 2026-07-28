@@ -44,7 +44,8 @@ public class DensityFunctions$ShiftedNoiseMixin {
 		if (PlanetWorldConfig.isContinental() && path.contains("ridge")) {
 			float land = ContinentalLandmask.landFactor(x, z, seed);
 			double ridge = this.noise.getValue(x, context.blockY() * this.yScale + this.shiftY.compute(context), z);
-			cir.setReturnValue(ridge * (1.0 - 0.8 * land));
+			// Do not damp toward 0 — that is the river/valley band
+			cir.setReturnValue(ContinentalLandmask.reshapeRidge(ridge, land));
 			return;
 		}
 		cir.setReturnValue(this.noise.getValue(x, context.blockY() * this.yScale + this.shiftY.compute(context), z));

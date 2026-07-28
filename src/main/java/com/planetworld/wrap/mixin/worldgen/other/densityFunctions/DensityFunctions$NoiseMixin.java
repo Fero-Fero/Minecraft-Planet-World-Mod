@@ -48,7 +48,8 @@ public class DensityFunctions$NoiseMixin {
 		if (path.contains("ridge")) {
 			float land = ContinentalLandmask.landFactor(x, z, seed);
 			double ridge = this.noise.getValue(x, (double) context.blockY() * this.yScale, z);
-			cir.setReturnValue(ridge * (1.0 - 0.8 * land));
+			// Do not damp toward 0 — that is the river/valley band
+			cir.setReturnValue(ContinentalLandmask.reshapeRidge(ridge, land));
 			return true;
 		}
 		return false;

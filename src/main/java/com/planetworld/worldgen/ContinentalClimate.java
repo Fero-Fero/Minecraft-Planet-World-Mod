@@ -16,7 +16,10 @@ public final class ContinentalClimate {
 	/** UI circumference at/above which sparse biome seeds + structure scaling apply. */
 	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = 4096;
 
-	private static final float CLIMATE_BLEND = 0.78f;
+	/** How strongly signed latitude overrides vanilla temperature. */
+	private static final float TEMP_BLEND = 0.85f;
+	/** How strongly latitude humidity belts override vanilla humidity. */
+	private static final float HUMIDITY_BLEND = 0.7f;
 	/** Fully replace vanilla continentalness with the landmask for solid continents. */
 	private static final float LANDMASK_BLEND = 1.0f;
 	/** Only the outermost ~3% of each hemisphere blends across the Z wrap seam. */
@@ -53,20 +56,27 @@ public final class ContinentalClimate {
 		double lat = z / half; // -1 north (-Z), +1 south (+Z)
 		float seam = seamBlend(Math.abs(lat));
 
-		float climateTemp = (float) (lat * 0.92);
+		float climateTemp = (float) (lat * 0.95);
 		climateTemp = Mth.lerp(seam, climateTemp, 0.0f);
-		temperature = Mth.clamp(Mth.lerp(CLIMATE_BLEND, temperature, climateTemp), -1.0f, 1.0f);
+		temperature = Mth.clamp(Mth.lerp(TEMP_BLEND, temperature, climateTemp), -1.0f, 1.0f);
 
-		float humidityBias = (float) (lat * 0.28) - 0.16f * (float) (1.0 - Math.abs(lat));
-		if (lat < -0.55) {
-			humidityBias += 0.1f;
+		// Latitude humidity belts so 2048 still gets desert/savanna/jungle naturally:
+		// deep south wet (jungle), mid-south arid (desert/savanna), north colder/damper.
+		float humidityTarget;
+		if (lat > 0.55) {
+			humidityTarget = 0.65f;
+		} else if (lat > 0.18) {
+			humidityTarget = -0.7f;
+		} else if (lat < -0.55) {
+			humidityTarget = 0.15f;
+		} else {
+			humidityTarget = 0.05f;
 		}
-		humidity = Mth.clamp(humidity + humidityBias * (1.0f - seam * 0.5f), -1.0f, 1.0f);
-
 		double x = wrapToSignedHalf(blockX, period, half);
-		float lonWander = (float) Math.sin((x / half) * Math.PI) * 0.12f;
-		humidity = Mth.clamp(humidity + lonWander, -1.0f, 1.0f);
-		weirdness = Mth.clamp(weirdness + lonWander * 0.35f, -1.0f, 1.0f);
+		float lonWander = (float) Math.sin((x / half) * Math.PI) * 0.18f;
+		humidityTarget = Mth.clamp(humidityTarget + lonWander, -1.0f, 1.0f);
+		float humBlend = HUMIDITY_BLEND * (1.0f - seam * 0.5f);
+		humidity = Mth.clamp(Mth.lerp(humBlend, humidity, humidityTarget), -1.0f, 1.0f);
 
 		float land = ContinentalLandmask.landFactor(blockX, blockZ, worldSeed);
 		float maskCont = ContinentalLandmask.continentalness(blockX, blockZ, worldSeed);
@@ -75,8 +85,8 @@ public final class ContinentalClimate {
 				-1.2f,
 				1.2f
 		);
-		// Dampen ridge/river weirdness inland so continents stay solid plates
-		weirdness = Mth.clamp(weirdness * (1.0f - 0.75f * land), -1.0f, 1.0f);
+		// Only escape the thin river weirdness band — keep biome variety
+		weirdness = Mth.clamp(ContinentalLandmask.reshapeWeirdness(weirdness, land), -1.0f, 1.0f);
 
 		return Climate.target(temperature, humidity, continentalness, erosion, depth, weirdness);
 	}
