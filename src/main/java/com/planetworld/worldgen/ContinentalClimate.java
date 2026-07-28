@@ -79,14 +79,23 @@ public final class ContinentalClimate {
 		humidity = Mth.clamp(Mth.lerp(humBlend, humidity, humidityTarget), -1.0f, 1.0f);
 
 		float land = ContinentalLandmask.landFactor(blockX, blockZ, worldSeed);
+		float mountain = ContinentalMountains.mountainFactor(blockX, blockZ, worldSeed, land);
 		float maskCont = ContinentalLandmask.continentalness(blockX, blockZ, worldSeed);
 		float continentalness = Mth.clamp(
 				Mth.lerp(LANDMASK_BLEND, vanillaCont, maskCont),
 				-1.2f,
 				1.2f
 		);
-		// Only escape the thin river weirdness band — keep biome variety
-		weirdness = Mth.clamp(ContinentalLandmask.reshapeWeirdness(weirdness, land), -1.0f, 1.0f);
+		weirdness = Mth.clamp(
+				ContinentalMountains.reshapeWeirdness(weirdness, land, mountain),
+				-1.0f,
+				1.0f
+		);
+		erosion = Mth.clamp(
+				ContinentalMountains.reshapeErosionClimate(erosion, land, mountain),
+				-1.0f,
+				1.0f
+		);
 
 		return Climate.target(temperature, humidity, continentalness, erosion, depth, weirdness);
 	}

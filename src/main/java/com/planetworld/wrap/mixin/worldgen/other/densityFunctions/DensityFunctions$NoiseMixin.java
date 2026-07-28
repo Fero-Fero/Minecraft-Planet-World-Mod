@@ -7,6 +7,7 @@ package com.planetworld.wrap.mixin.worldgen.other.densityFunctions;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.worldgen.ContinentalLandmask;
+import com.planetworld.worldgen.ContinentalMountains;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -45,11 +46,21 @@ public class DensityFunctions$NoiseMixin {
 			cir.setReturnValue((double) ContinentalLandmask.continentalness(x, z, seed));
 			return true;
 		}
+		float land = ContinentalLandmask.landFactor(x, z, seed);
+		float mountain = ContinentalMountains.mountainFactor(x, z, seed, land);
 		if (path.contains("ridge")) {
-			float land = ContinentalLandmask.landFactor(x, z, seed);
 			double ridge = this.noise.getValue(x, (double) context.blockY() * this.yScale, z);
-			// Do not damp toward 0 — that is the river/valley band
-			cir.setReturnValue(ContinentalLandmask.reshapeRidge(ridge, land));
+			cir.setReturnValue(ContinentalMountains.reshapeRidge(ridge, land, mountain));
+			return true;
+		}
+		if (path.contains("erosion")) {
+			double erosion = this.noise.getValue(x, (double) context.blockY() * this.yScale, z);
+			cir.setReturnValue(ContinentalMountains.reshapeErosion(erosion, land, mountain));
+			return true;
+		}
+		if (path.contains("jagged")) {
+			double jagged = this.noise.getValue(x, (double) context.blockY() * this.yScale, z);
+			cir.setReturnValue(ContinentalMountains.reshapeJaggedness(jagged, mountain));
 			return true;
 		}
 		return false;
