@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Continents ≥2048: keep random-spread structures inside the wrap so mansions,
- * monuments, outposts, etc. can actually generate on a finite planet.
+ * Continents ≥2048: keep rare large-spacing structures inside the wrap.
+ * Only overrides {@code getPotentialStructureChunk} when spacing was actually clamped.
  */
 @Mixin(RandomSpreadStructurePlacement.class)
 public abstract class RandomSpreadStructurePlacementMixin {
@@ -38,29 +38,33 @@ public abstract class RandomSpreadStructurePlacementMixin {
 		if (!ContinentalClimate.shouldScaleStructures()) {
 			return;
 		}
-		RandomSpreadStructurePlacement self = (RandomSpreadStructurePlacement) (Object) this;
-		int maxSep = Math.max(0, self.spacing() - 1);
+		RandomSpreadStructurePlacementAccessor raw = (RandomSpreadStructurePlacementAccessor) this;
+		if (raw.planetworld$rawSpacing() <= maxSpacingChunks()) {
+			return;
+		}
+		int spacing = Math.min(raw.planetworld$rawSpacing(), maxSpacingChunks());
+		int maxSep = Math.max(0, spacing - 1);
 		if (cir.getReturnValue() > maxSep) {
 			cir.setReturnValue(maxSep);
 		}
 	}
 
-	/**
-	 * Vanilla reads raw fields here; re-run with clamped {@link #spacing()}/{@link #separation()}
-	 * so worldgen matches locate.
-	 */
 	@Inject(method = "getPotentialStructureChunk", at = @At("HEAD"), cancellable = true)
 	private void planetworld$clampedPotentialChunk(long seed, int regionX, int regionZ, CallbackInfoReturnable<ChunkPos> cir) {
 		if (!ContinentalClimate.shouldScaleStructures()) {
 			return;
 		}
-		RandomSpreadStructurePlacement self = (RandomSpreadStructurePlacement) (Object) this;
-		int spacing = self.spacing();
-		int separation = self.separation();
+		RandomSpreadStructurePlacementAccessor raw = (RandomSpreadStructurePlacementAccessor) this;
+		int max = maxSpacingChunks();
+		if (raw.planetworld$rawSpacing() <= max) {
+			return; // vanilla fields already fine — avoid extra work on every structure check
+		}
+		int spacing = max;
+		int separation = Math.min(raw.planetworld$rawSeparation(), Math.max(0, spacing - 1));
 		int i = Math.floorDiv(regionX, spacing);
 		int j = Math.floorDiv(regionZ, spacing);
 		WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(0L));
-		int salt = ((StructurePlacementAccessor) self).planetworld$getSalt();
+		int salt = ((StructurePlacementAccessor) this).planetworld$getSalt();
 		random.setLargeFeatureWithSalt(seed, i, j, salt);
 		int range = Math.max(1, spacing - separation);
 		int ox = this.spreadType().evaluate(random, range);
@@ -68,7 +72,6 @@ public abstract class RandomSpreadStructurePlacementMixin {
 		cir.setReturnValue(new ChunkPos(i * spacing + ox, j * spacing + oz));
 	}
 
-	/** At least ~4 placement cells across the torus (width/4), never below 12. */
 	private static int maxSpacingChunks() {
 		return Math.max(12, PlanetWorldConfig.chunkWidth() / 4);
 	}

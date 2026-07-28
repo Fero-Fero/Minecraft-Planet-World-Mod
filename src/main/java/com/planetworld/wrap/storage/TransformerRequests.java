@@ -72,5 +72,7 @@ public class TransformerRequests {
 		CHUNK_MAP_TRANSFORMER.remove();
 		NOISE_XZ_FREQUENCY.remove();
 		DebugInfo.chunkLoadingLevels.clear();
+		com.planetworld.worldgen.OverworldBiomeSeedPlacer.clearCache();
+		com.planetworld.worldgen.GuaranteedStructures.clearCache();
 	}
 }

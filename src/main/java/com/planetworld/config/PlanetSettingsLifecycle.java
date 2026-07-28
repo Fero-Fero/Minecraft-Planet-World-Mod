@@ -4,9 +4,7 @@ import com.planetworld.PlanetWorld;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.network.SyncPlanetSettingsPayload;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
-import com.planetworld.wrap.options.DimensionWrappingSettings;
 import com.planetworld.wrap.options.WorldWrappingSettings;
-import com.planetworld.wrap.options.WrappingOptions;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -27,7 +25,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 
 public final class PlanetSettingsLifecycle {
 	private static final SavedData.Factory<PlanetWorldSavedData> FACTORY =
@@ -49,8 +46,16 @@ public final class PlanetSettingsLifecycle {
 			return;
 		}
 		WorldWrappingSettingsAccessor accessor = (WorldWrappingSettingsAccessor) primary;
-		if (accessor.getWorldWrappingSettings() != null) {
-			return; // Existing wrapped world; bounds already loaded from level.dat.
+		WorldWrappingSettings existing = accessor.getWorldWrappingSettings();
+		if (existing != null) {
+			WorldWrappingSettings upgraded = PlanetWrappingBounds.withNetherIfMissing(existing);
+			if (upgraded != existing) {
+				accessor.setWorldWrappingSettings(upgraded);
+				PlanetWorld.LOGGER.info(
+						"Added Nether torus wrapping to existing world (End remains unwrapped)"
+				);
+			}
+			return;
 		}
 		if (accessor.planetworld$loadedFromDisk()) {
 			PlanetWorld.LOGGER.warn(
@@ -59,18 +64,15 @@ public final class PlanetSettingsLifecycle {
 		}
 
 		PlanetSettings planet = PlanetSettingsAccess.get();
-		// Full torus width in blocks is 2*circumference, so:
-		// fullChunks = (2*circumference)/16 = circumference/8
-		// halfChunks = fullChunks/2 = circumference/16
+		WorldWrappingSettings wrapping = PlanetWrappingBounds.create(planet.circumference());
+		accessor.setWorldWrappingSettings(wrapping);
 		int halfChunks = Math.max(1, planet.circumference() / 16);
-		DimensionWrappingSettings overworld = new DimensionWrappingSettings(
-				-halfChunks, halfChunks, -halfChunks, halfChunks,
-				DimensionWrappingSettings.Axis.X, 0, true);
-		accessor.setWorldWrappingSettings(new WorldWrappingSettings(
-				new WrappingOptions(1), Map.of(Level.OVERWORLD, overworld)));
+		int netherScale = PlanetWrappingBounds.chooseNetherScale(halfChunks * 2);
 		PlanetWorld.LOGGER.info(
-				"Installed torus wrapping bounds for new world: circumference={} blocks ({} chunks per axis)",
-				planet.circumference(), halfChunks * 2);
+				"Installed torus wrapping (Overworld+Nether, not End): circumference={} blocks, netherScale={}",
+				planet.circumference(),
+				netherScale
+		);
 	}
 
 	/**

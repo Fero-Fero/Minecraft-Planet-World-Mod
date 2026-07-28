@@ -52,14 +52,16 @@ public final class ContinentalLandmask {
 	 * Density/climate continentalness: ocean basins, thin coasts, inland plates.
 	 */
 	public static float continentalness(double blockX, double blockZ, long worldSeed) {
-		float land = landFactor(blockX, blockZ, worldSeed);
+		return continentalness(blockX, blockZ, worldSeed, landFactor(blockX, blockZ, worldSeed));
+	}
+
+	public static float continentalness(double blockX, double blockZ, long worldSeed, float land) {
 		float cont;
 		if (land < 0.2f) {
 			cont = Mth.lerp(land / 0.2f, -1.05f, -0.35f);
 		} else if (land < 0.45f) {
 			cont = Mth.lerp((land - 0.2f) / 0.25f, -0.35f, 0.2f);
 		} else {
-			// Inland but not maxed — leaves room for forest/savanna/desert params
 			cont = Mth.lerp((land - 0.45f) / 0.55f, 0.2f, 0.55f);
 		}
 
@@ -68,7 +70,6 @@ public final class ContinentalLandmask {
 			double half = period * 0.5;
 			double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
 			double z = ContinentalClimate.wrapToSignedHalf(blockZ, period, half);
-			// Larger wavelength + softer threshold → slightly bigger mushroom islands
 			float island = OpenSimplex2S.noise2(worldSeed ^ SEED_MUSH, x / 190.0, z / 190.0);
 			if (island > 0.84f) {
 				float mush = smoothstep(0.84f, 0.96f, island);

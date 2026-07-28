@@ -74,7 +74,7 @@ public final class ContinentalClimate {
 		// deep south wet (jungle), mid-south arid (desert/savanna), north colder/damper.
 		float humidityTarget;
 		if (lat > 0.55) {
-			humidityTarget = 0.65f;
+			humidityTarget = 0.48f; // wet tropics without bamboo-jungle dominance
 		} else if (lat > 0.18) {
 			humidityTarget = -0.7f;
 		} else if (lat < -0.55) {
@@ -90,7 +90,7 @@ public final class ContinentalClimate {
 
 		float land = ContinentalLandmask.landFactor(blockX, blockZ, worldSeed);
 		float mountain = ContinentalMountains.mountainFactor(blockX, blockZ, worldSeed, land);
-		float maskCont = ContinentalLandmask.continentalness(blockX, blockZ, worldSeed);
+		float maskCont = ContinentalLandmask.continentalness(blockX, blockZ, worldSeed, land);
 		float continentalness = Mth.clamp(
 				Mth.lerp(LANDMASK_BLEND, vanillaCont, maskCont),
 				-1.2f,

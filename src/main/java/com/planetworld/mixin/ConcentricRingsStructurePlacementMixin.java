@@ -41,8 +41,8 @@ public abstract class ConcentricRingsStructurePlacementMixin {
 			return;
 		}
 		int width = PlanetWorldConfig.chunkWidth();
-		// At least one stronghold; cap so rings stay inside the torus
-		int guaranteed = Math.max(1, Math.min(cir.getReturnValue(), Math.max(1, width / 24)));
+		// Always at least one stronghold (End portal); a couple more on larger wraps
+		int guaranteed = Math.max(1, Math.min(3, Math.max(1, width / 64)));
 		cir.setReturnValue(guaranteed);
 	}
 }

@@ -18,16 +18,66 @@ import java.util.List;
 
 /**
  * Sparse one-cell-per-overworld-biome seeds for Continents ≥2048.
- * Structure-critical biomes (dark forest, deep dark, mushroom fields) get
- * larger patches so mansions / ancient cities / mushroom islands can place.
+ * Dark forest is placed on inland terrain and sized for woodland mansions.
  */
 public final class OverworldBiomeSeedPlacer {
 	private static final int PATCH_RADIUS_BLOCKS = 28;
-	private static final int STRUCTURE_BIOME_RADIUS_BLOCKS = 112;
+	private static final int STRUCTURE_BIOME_RADIUS_BLOCKS = 160;
 	private static final int MUSHROOM_RADIUS_BLOCKS = 72;
 	private static final long PLACEMENT_SALT = 0x51EEDB10L;
 
+	private static final Object LOCK = new Object();
+	private static volatile SeedLayout cache;
+	private static volatile double[] darkForestCenterCache;
+	private static volatile long darkForestSeedCache = Long.MIN_VALUE;
+
 	private OverworldBiomeSeedPlacer() {
+	}
+
+	public static void clearCache() {
+		cache = null;
+		darkForestCenterCache = null;
+		darkForestSeedCache = Long.MIN_VALUE;
+	}
+
+	/**
+	 * Inland dark-forest center used by biome seeds and guaranteed mansion placement.
+	 */
+	public static double[] ensureDarkForestOnLand(long worldSeed) {
+		long seed = worldSeed ^ PLACEMENT_SALT;
+		if (darkForestCenterCache != null && darkForestSeedCache == seed) {
+			return darkForestCenterCache;
+		}
+		synchronized (LOCK) {
+			if (darkForestCenterCache != null && darkForestSeedCache == seed) {
+				return darkForestCenterCache;
+			}
+			double period = ContinentalClimate.periodBlocks();
+			double half = period * 0.5;
+			double[] best = null;
+			float bestLand = -1.0f;
+			for (int attempt = 0; attempt < 48; attempt++) {
+				long h = seed ^ (0xDA12F02E57L + attempt * 0x9E3779B97F4A7C15L);
+				double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
+				double cz = (((h >>> 25) & 0xFFFF) / 65535.0 - 0.5) * half * 0.7;
+				cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
+				cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
+				float land = ContinentalLandmask.landFactor(cx, cz, worldSeed);
+				if (land > bestLand) {
+					bestLand = land;
+					best = new double[]{cx, cz};
+					if (land >= 0.55f) {
+						break;
+					}
+				}
+			}
+			if (best == null) {
+				best = new double[]{0.0, 0.0};
+			}
+			darkForestCenterCache = best;
+			darkForestSeedCache = seed;
+			return best;
+		}
 	}
 
 	@Nullable
@@ -39,26 +89,77 @@ public final class OverworldBiomeSeedPlacer {
 		if (level == null) {
 			return null;
 		}
-		HolderLookup.RegistryLookup<Biome> biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+		SeedLayout layout = layoutFor(level);
+		double period = layout.period;
+		double half = period * 0.5;
+		double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
+		double z = ContinentalClimate.wrapToSignedHalf(blockZ, period, half);
+
+		for (int i = 0; i < layout.count; i++) {
+			double dx = Math.abs(x - layout.x[i]);
+			double dz = Math.abs(z - layout.z[i]);
+			dx = Math.min(dx, period - dx);
+			dz = Math.min(dz, period - dz);
+			double r = layout.radius[i];
+			if (dx * dx + dz * dz <= r * r) {
+				return layout.holders[i];
+			}
+		}
+		return null;
+	}
+
+	private static SeedLayout layoutFor(ServerLevel level) {
 		long seed = level.getSeed() ^ PLACEMENT_SALT;
-		List<ResourceKey<Biome>> keys = overworldBiomeKeys();
 		double period = ContinentalClimate.periodBlocks();
+		SeedLayout local = cache;
+		if (local != null && local.seed == seed && Double.compare(local.period, period) == 0) {
+			return local;
+		}
+		synchronized (LOCK) {
+			local = cache;
+			if (local != null && local.seed == seed && Double.compare(local.period, period) == 0) {
+				return local;
+			}
+			local = build(level, seed, period);
+			cache = local;
+			return local;
+		}
+	}
+
+	private static SeedLayout build(ServerLevel level, long seed, double period) {
+		HolderLookup.RegistryLookup<Biome> biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+		List<ResourceKey<Biome>> keys = overworldBiomeKeys();
 		double half = period * 0.5;
 		int n = keys.size();
 		int grid = Math.max(1, (int) Math.ceil(Math.sqrt(n)));
 		double cell = period / grid;
+		long worldSeed = level.getSeed();
 
-		double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
-		double z = ContinentalClimate.wrapToSignedHalf(blockZ, period, half);
-
+		double[] xs = new double[n];
+		double[] zs = new double[n];
+		double[] radii = new double[n];
+		@SuppressWarnings("unchecked")
+		Holder<Biome>[] holders = (Holder<Biome>[]) new Holder<?>[n];
+		int written = 0;
 		for (int i = 0; i < n; i++) {
 			ResourceKey<Biome> key = keys.get(i);
-			double[] pos = seedCenter(seed, i, key, period, half, grid, cell);
-			if (shortestDist(x, z, pos[0], pos[1], period) <= patchRadius(key)) {
-				return biomes.get(key).orElse(null);
+			Holder.Reference<Biome> holder = biomes.get(key).orElse(null);
+			if (holder == null) {
+				continue;
 			}
+			double[] pos;
+			if (key == Biomes.DARK_FOREST) {
+				pos = ensureDarkForestOnLand(worldSeed);
+			} else {
+				pos = seedCenter(seed, i, key, period, half, grid, cell);
+			}
+			xs[written] = pos[0];
+			zs[written] = pos[1];
+			radii[written] = patchRadius(key);
+			holders[written] = holder;
+			written++;
 		}
-		return null;
+		return new SeedLayout(seed, period, written, xs, zs, radii, holders);
 	}
 
 	private static int patchRadius(ResourceKey<Biome> key) {
@@ -67,6 +168,9 @@ public final class OverworldBiomeSeedPlacer {
 		}
 		if (key == Biomes.DARK_FOREST || key == Biomes.DEEP_DARK) {
 			return STRUCTURE_BIOME_RADIUS_BLOCKS;
+		}
+		if (key == Biomes.BAMBOO_JUNGLE) {
+			return 16; // tiny — climate remap also converts most bamboo to jungle
 		}
 		return PATCH_RADIUS_BLOCKS;
 	}
@@ -103,12 +207,7 @@ public final class OverworldBiomeSeedPlacer {
 			cz = Mth.clamp(cz, half * 0.25, half * 0.95);
 		}
 
-		if (key == Biomes.DARK_FOREST) {
-			cz = Mth.clamp(cz, -half * 0.35f, half * 0.2f);
-			long landHash = h ^ 0xDA12F02E57L;
-			cx = ContinentalClimate.wrapToSignedHalf(((landHash >>> 9) & 0xFFFF) / 65535.0 * period - half, period, half);
-		} else if (key == Biomes.MUSHROOM_FIELDS) {
-			// Prefer ocean basins (any latitude)
+		if (key == Biomes.MUSHROOM_FIELDS) {
 			long mushHash = h ^ 0xA0151504ADL;
 			cx = ContinentalClimate.wrapToSignedHalf(((mushHash >>> 9) & 0xFFFF) / 65535.0 * period - half, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(((mushHash >>> 25) & 0xFFFF) / 65535.0 * period - half, period, half);
@@ -120,7 +219,6 @@ public final class OverworldBiomeSeedPlacer {
 		};
 	}
 
-	/** Negative = cold/north, positive = tropical/south. */
 	private static float climatePreference(ResourceKey<Biome> key) {
 		if (key == Biomes.FROZEN_OCEAN || key == Biomes.DEEP_FROZEN_OCEAN || key == Biomes.FROZEN_RIVER
 				|| key == Biomes.SNOWY_PLAINS || key == Biomes.ICE_SPIKES || key == Biomes.SNOWY_TAIGA
@@ -136,17 +234,17 @@ public final class OverworldBiomeSeedPlacer {
 				|| key == Biomes.BADLANDS || key == Biomes.WOODED_BADLANDS || key == Biomes.ERODED_BADLANDS) {
 			return 1.0f;
 		}
-		if (key == Biomes.MUSHROOM_FIELDS) {
-			return 0.0f;
-		}
 		return 0.0f;
 	}
 
-	private static double shortestDist(double x0, double z0, double x1, double z1, double period) {
-		double dx = Math.abs(x0 - x1);
-		double dz = Math.abs(z0 - z1);
-		dx = Math.min(dx, period - dx);
-		dz = Math.min(dz, period - dz);
-		return Math.sqrt(dx * dx + dz * dz);
+	private record SeedLayout(
+			long seed,
+			double period,
+			int count,
+			double[] x,
+			double[] z,
+			double[] radius,
+			Holder<Biome>[] holders
+	) {
 	}
 }
