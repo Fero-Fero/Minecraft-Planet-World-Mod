@@ -8,7 +8,11 @@
     "CropBlockMixin",
     "DaylightDetectorBlockMixin",
     "FireBlockMixin",
-    "SaplingBlockMixin"
+    "SaplingBlockMixin",
+    "NoiseBasedChunkGeneratorMixin",
+    "MultiNoiseBiomeSourceMixin",
+    "RandomSpreadStructurePlacementMixin",
+    "ConcentricRingsStructurePlacementMixin"
   ],
   "client": [
     "client.LevelRendererMixin",
