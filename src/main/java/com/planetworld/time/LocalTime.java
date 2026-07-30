@@ -2,7 +2,9 @@ package com.planetworld.time;
 
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.WrapMath;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 
 /**
@@ -11,6 +13,9 @@ import net.minecraft.world.level.Level;
  */
 public final class LocalTime {
     public static final long DAY_LENGTH = 24000L;
+
+    /** Light level vanilla requires for crops and saplings to advance. */
+    private static final int GROWTH_LIGHT_LEVEL = 9;
 
     private LocalTime() {
     }
@@ -55,6 +60,23 @@ public final class LocalTime {
     public static long ticksUntilLocalDawn(Level level, double sleeperX) {
         long local = localTime(level, sleeperX);
         return Math.floorMod(-local, DAY_LENGTH);
+    }
+
+    /**
+     * True when local nightfall should hold back sunlight-driven growth at {@code lightPos}.
+     * <p>
+     * Vanilla ties crop and sapling growth to a light level rather than to the clock, so growth under
+     * artificial light must keep working at night exactly as it does in an unwrapped world; only the
+     * sunlit case follows the local day.
+     */
+    public static boolean holdsBackSunlitGrowth(Level level, BlockPos lightPos) {
+        if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
+            return false;
+        }
+        if (isDay(level, lightPos.getX())) {
+            return false;
+        }
+        return level.getBrightness(LightLayer.BLOCK, lightPos) < GROWTH_LIGHT_LEVEL;
     }
 
     /** Celestial angle 0..1 matching vanilla day cycle for sky rendering. */

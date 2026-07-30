@@ -26,4 +26,29 @@ public abstract class ServerPlayerMixin {
 	public BlockPos modifyBlockPos(BlockPos blockPos) {
 		return this.serverLevel().getTransformer().Block.unwrap(thiz.blockPosition(), blockPos);
 	}
+
+	/**
+	 * Distance travelled feeds movement statistics and hunger exhaustion. Callers derive it from raw
+	 * positions sampled before and after a tick, so a bound crossing looks like one step across the
+	 * whole world and drains the food bar at once. Measure the short path instead.
+	 */
+	@ModifyVariable(method = "checkMovementStatistics", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private double planetworld$shortestMovementX(double deltaX) {
+		return this.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
+	}
+
+	@ModifyVariable(method = "checkMovementStatistics", at = @At("HEAD"), argsOnly = true, ordinal = 2)
+	private double planetworld$shortestMovementZ(double deltaZ) {
+		return this.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);
+	}
+
+	@ModifyVariable(method = "checkRidingStatistics", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	private double planetworld$shortestRidingX(double deltaX) {
+		return this.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
+	}
+
+	@ModifyVariable(method = "checkRidingStatistics", at = @At("HEAD"), argsOnly = true, ordinal = 2)
+	private double planetworld$shortestRidingZ(double deltaZ) {
+		return this.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);
+	}
 }

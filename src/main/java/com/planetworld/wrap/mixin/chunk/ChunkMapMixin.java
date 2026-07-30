@@ -53,6 +53,21 @@ public abstract class ChunkMapMixin {
 	}
 
 	/**
+	 * Keep continuous client coords (used to remap chunk packets) in sync with the wrapped
+	 * server position. While riding, MovePlayer packets may never run — after a torus jump
+	 * that freezes client chunk loading until the player dismounts and walks.
+	 */
+	@Inject(method = "move", at = @At("HEAD"))
+	private void planetworld$advanceClientCoords(ServerPlayer player, CallbackInfo ci) {
+		DimensionTransformer transformer = player.serverLevel().getTransformer();
+		if (transformer == null || !transformer.isWrapped()) {
+			return;
+		}
+		player.setClientX(transformer.Coord.X.unwrap(player.getClientX(), player.getX()));
+		player.setClientZ(transformer.Coord.Z.unwrap(player.getClientZ(), player.getZ()));
+	}
+
+	/**
 	 * Support wrapped distances as closest Euclidean distance.
 	 */
 	@Inject(method = "euclideanDistanceSquared", at = @At("HEAD"), cancellable = true)

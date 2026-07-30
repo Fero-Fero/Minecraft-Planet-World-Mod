@@ -16,14 +16,59 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public class ServerChunkCacheMixin {
 	@Shadow @Final ServerLevel level;
 
-	//TODO: Very slow, but optimal injection
 	@ModifyVariable(method = "getChunkNow", at = @At("HEAD"), argsOnly = true, index = 1)
-	public int modifyX(int chunkX) {
+	public int modifyGetChunkNowX(int chunkX) {
 		return level.getTransformer().Chunk.X.wrap(chunkX);
 	}
 
 	@ModifyVariable(method = "getChunkNow", at = @At("HEAD"), argsOnly = true, index = 2)
-	public int modifyZ(int chunkZ) {
+	public int modifyGetChunkNowZ(int chunkZ) {
+		return level.getTransformer().Chunk.Z.wrap(chunkZ);
+	}
+
+	/**
+	 * Main load/gen path (Create train lookahead, force-loads, etc.). Without this, out-of-torus
+	 * chunk coords can stall generation forever after a wrap jump.
+	 * <p>
+	 * 1.21.1 signature returns {@code ChunkAccess}, not {@code LevelChunk}.
+	 */
+	@ModifyVariable(
+			method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
+			at = @At("HEAD"),
+			argsOnly = true,
+			index = 1
+	)
+	public int modifyGetChunkX(int chunkX) {
+		return level.getTransformer().Chunk.X.wrap(chunkX);
+	}
+
+	@ModifyVariable(
+			method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
+			at = @At("HEAD"),
+			argsOnly = true,
+			index = 2
+	)
+	public int modifyGetChunkZ(int chunkZ) {
+		return level.getTransformer().Chunk.Z.wrap(chunkZ);
+	}
+
+	@ModifyVariable(
+			method = "getChunkFutureMainThread(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Ljava/util/concurrent/CompletableFuture;",
+			at = @At("HEAD"),
+			argsOnly = true,
+			index = 1
+	)
+	public int modifyGetChunkFutureX(int chunkX) {
+		return level.getTransformer().Chunk.X.wrap(chunkX);
+	}
+
+	@ModifyVariable(
+			method = "getChunkFutureMainThread(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Ljava/util/concurrent/CompletableFuture;",
+			at = @At("HEAD"),
+			argsOnly = true,
+			index = 2
+	)
+	public int modifyGetChunkFutureZ(int chunkZ) {
 		return level.getTransformer().Chunk.Z.wrap(chunkZ);
 	}
 }

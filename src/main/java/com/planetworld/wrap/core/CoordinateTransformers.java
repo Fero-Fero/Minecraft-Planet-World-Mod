@@ -109,26 +109,41 @@ public class CoordinateTransformers {
 			return toCoordUnwrapped - fromCoord;
 		}
 
-		public double sqrDistToBounds(double dist) {
-			if(dist > upperBlockBounds) {
-				dist -= domainLength;
+		/**
+		 * Reduces a raw difference between two coordinates to the equivalent step on the torus.
+		 * No step can be longer than half the world, so anything beyond that crossed a bound and
+		 * belongs on the other side.
+		 */
+		public double shortestDelta(double delta) {
+			if (delta > domainRadius) {
+				return delta - domainLength;
 			}
-			else if (dist < lowerBlockBounds) {
-				dist += domainLength;
+			if (delta < -domainRadius) {
+				return delta + domainLength;
 			}
+			return delta;
+		}
 
-			return dist * dist;
+		public int shortestDelta(int delta) {
+			if (delta > domainRadius) {
+				return delta - domainLength;
+			}
+			if (delta < -domainRadius) {
+				return delta + domainLength;
+			}
+			return delta;
+		}
+
+		public double sqrDistToBounds(double dist) {
+			double delta = shortestDelta(dist);
+
+			return delta * delta;
 		}
 
 		public int sqrDistToBounds(int dist) {
-			if(dist > upperBlockBounds) {
-				dist -= domainLength;
-			}
-			else if (dist < lowerBlockBounds) {
-				dist += domainLength;
-			}
+			int delta = shortestDelta(dist);
 
-			return dist * dist;
+			return delta * delta;
 		}
 	}
 

@@ -4,6 +4,9 @@
 
 package com.planetworld.wrap.mixin.entity;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.planetworld.wrap.accessors.WrapsOwnPosition;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -15,7 +18,6 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.*;
@@ -42,43 +44,58 @@ public abstract class EntityMixin {
 	}
 
 	/**
-	 * @author Famro Fexl
-	 * @reason wrapping
+	 * Proximity is measured on the short path around the world.
 	 */
-	@Overwrite
-	public boolean closerThan(Entity entity, double horizontalDistance, double verticalDistance) {
+	@Inject(method = "closerThan(Lnet/minecraft/world/entity/Entity;DD)Z", at = @At("HEAD"), cancellable = true)
+	public void wrapCloserThan(Entity entity, double horizontalDistance, double verticalDistance, CallbackInfoReturnable<Boolean> cir) {
 		DimensionTransformer transformer = planetworld$serverTransformer();
 
 		double d = entity.getX() - transformer.Coord.X.unwrap(entity.getX(), thiz.getX());
 		double e = entity.getY() - thiz.getY();
 		double f = entity.getZ() - transformer.Coord.Z.unwrap(entity.getZ(), thiz.getZ());
-		return Mth.lengthSquared(d, f) < Mth.square(horizontalDistance) && Mth.square(e) < Mth.square(verticalDistance);
-	}
-
-	@ModifyVariable(method = "setPosRaw", at = @At("HEAD"), ordinal = 0, argsOnly = true)
-	public double wrapX(double x) {
-		return planetworld$serverTransformer().Coord.X.wrap(x);
-	}
-
-	@ModifyVariable(method = "setPosRaw", at = @At("HEAD"), ordinal = 2, argsOnly = true)
-	public double wrapZ(double z) {
-		return planetworld$serverTransformer().Coord.Z.wrap(z);
+		cir.setReturnValue(Mth.lengthSquared(d, f) < Mth.square(horizontalDistance) && Mth.square(e) < Mth.square(verticalDistance));
 	}
 
 	/**
-	 * @author Famro Fexl
-	 * @reason wrapping
+	 * Crossing a bound is a change of coordinate frame, not a jump. Wrap the new position and shift
+	 * the stored previous positions by the same amount, so everything derived from a per-tick delta
+	 * (movement statistics, animation, fall distance) keeps measuring the short path.
 	 */
-	@Overwrite
-	public void absMoveTo(double x, double y, double z) {
+	@WrapMethod(method = "setPosRaw")
+	private void planetworld$wrapPosition(double x, double y, double z, Operation<Void> original) {
 		DimensionTransformer transformer = planetworld$serverTransformer();
+		if (!transformer.isWrapped() || planetworld$wrapsOwnPosition()) {
+			original.call(x, y, z);
+			return;
+		}
 
-		double d = Mth.clamp(x, -3.0E7, 3.0E7);
-		double e = Mth.clamp(z, -3.0E7, 3.0E7);
-		thiz.xo = transformer.Coord.X.wrap(d);
-		thiz.yo = y;
-		thiz.zo = transformer.Coord.Z.wrap(e);
-		thiz.setPos(d, y, e);
+		double wrappedX = transformer.Coord.X.wrap(x);
+		double wrappedZ = transformer.Coord.Z.wrap(z);
+
+		if (wrappedX != x) {
+			double shift = wrappedX - x;
+			thiz.xo += shift;
+			thiz.xOld += shift;
+		}
+		if (wrappedZ != z) {
+			double shift = wrappedZ - z;
+			thiz.zo += shift;
+			thiz.zOld += shift;
+		}
+
+		original.call(wrappedX, y, wrappedZ);
+	}
+
+	/**
+	 * Entities that manage their own wrapping (and their riders) must not be wrapped here as well,
+	 * or the two owners fight over the position every tick at a bound.
+	 */
+	@Unique
+	private boolean planetworld$wrapsOwnPosition() {
+		if (thiz instanceof WrapsOwnPosition) {
+			return true;
+		}
+		return thiz.getVehicle() instanceof WrapsOwnPosition;
 	}
 
 	@Redirect(method = "isColliding", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/shapes/Shapes;joinIsNotEmpty(Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/BooleanOp;)Z"))

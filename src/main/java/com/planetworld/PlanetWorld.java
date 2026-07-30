@@ -8,6 +8,7 @@ import com.planetworld.sleep.SleepHandler;
 import com.planetworld.time.LocalTimeHandler;
 import com.planetworld.weather.LocalizedWeatherHandler;
 import com.planetworld.wrap.client.storage.TransformersStorage;
+import com.planetworld.wrap.compat.create.CreateCompatCheck;
 import com.planetworld.wrap.core.DimensionTransformer;
 import com.planetworld.wrap.network.WrapSettingsConfigurationTask;
 import com.planetworld.wrap.network.packet.DimensionWrappingPayload;
@@ -41,10 +42,13 @@ public class PlanetWorld {
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> LOGGER.info(
-                "Planet World ready — default circumference {} blocks (no border teleport)",
-                PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt()
-        ));
+        event.enqueueWork(() -> {
+            LOGGER.info(
+                    "Planet World ready — default circumference {} blocks (no border teleport)",
+                    PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt()
+            );
+            CreateCompatCheck.verifyIfCreatePresent();
+        });
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {

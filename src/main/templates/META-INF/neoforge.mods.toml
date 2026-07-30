@@ -19,6 +19,9 @@ config="${mod_id}.mixins.json"
 [[mixins]]
 config="${mod_id}-wrap.mixins.json"
 
+[[mixins]]
+config="${mod_id}-create.mixins.json"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"
@@ -30,5 +33,12 @@ config="${mod_id}-wrap.mixins.json"
     modId="minecraft"
     type="required"
     versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="create"
+    type="optional"
+    versionRange="[6.0.10,6.1.0)"
     ordering="NONE"
     side="BOTH"

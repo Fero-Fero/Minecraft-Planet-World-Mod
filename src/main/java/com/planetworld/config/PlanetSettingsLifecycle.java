@@ -20,6 +20,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -157,5 +158,15 @@ public final class PlanetSettingsLifecycle {
 		TransformerRequests.clearSessionState();
 		PlanetSettingsAccess.clearActive();
 		PlanetSettingsAccess.clearPending();
+	}
+
+	/**
+	 * Worldgen keeps publishing the level it is sampling, and chunks are still being saved and closed
+	 * while the server stops, so the clear above can be undone by a task that finishes late. Clearing
+	 * again once everything is shut down is what actually stops a closed world from staying reachable.
+	 */
+	@SubscribeEvent
+	public static void onServerStopped(ServerStoppedEvent event) {
+		TransformerRequests.clearSessionState();
 	}
 }

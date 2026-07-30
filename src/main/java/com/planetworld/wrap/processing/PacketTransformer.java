@@ -235,6 +235,12 @@ public class PacketTransformer {
 	}
 
 	private static ServerboundMoveVehiclePacket transformPacket(ServerboundMoveVehiclePacket packet, ServerPlayer player) {
+		// Riding (Create trains, boats, etc.) often never sends MovePlayer packets, so keep
+		// continuous client coords advancing from the vehicle packet — otherwise chunk remap
+		// freezes after a torus wrap jump until the player dismounts and walks.
+		player.setClientX(packet.getX());
+		player.setClientZ(packet.getZ());
+
 		return newBuffer(ServerboundMoveVehiclePacket.STREAM_CODEC, buffer -> {
 			buffer.writeDouble(getServerX(player, packet.getX()));
 			buffer.writeDouble(packet.getY());

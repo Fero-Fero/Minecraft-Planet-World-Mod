@@ -1,0 +1,28 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.planetworld.wrap.compat.create.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.planetworld.wrap.compat.create.CreateMixinPlugin",
+  "mixins": [
+    "AbstractContraptionEntityMixin",
+    "TrackPlacementMixin",
+    "TrackNodeLocationMixin",
+    "ITrackBlockMixin",
+    "TrackEdgeMixin",
+    "StationBlockEntityMixin",
+    "TrackPropagatorMixin",
+    "TravellingPointMixin",
+    "GlobalRailwayManagerMixin",
+    "TrainMixin",
+    "CarriageAlignEntityMixin",
+    "CarriageBogeyMixin",
+    "CarriageContraptionEntityMixin",
+    "CarriageEntityHandlerMixin",
+    "CarriageAnchorMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

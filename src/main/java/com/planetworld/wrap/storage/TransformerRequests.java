@@ -5,11 +5,7 @@ package com.planetworld.wrap.storage;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.chunk.ChunkAccess;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Storage for context propagation down call stacks.
@@ -25,7 +21,6 @@ public class TransformerRequests {
 	public static MinecraftServer server = null;
 	/** Volatile: cleared on stop while gen workers may still sample. */
 	public static volatile ServerLevel noiseLevel;
-	public static List<ChunkAccess> structureChunks = new ArrayList<>();
 
 	public static DimensionTransformer getChunkMapTransformer() {
 		return CHUNK_MAP_TRANSFORMER.get();
@@ -68,7 +63,6 @@ public class TransformerRequests {
 	public static void clearSessionState() {
 		server = null;
 		noiseLevel = null;
-		structureChunks.clear();
 		CHUNK_MAP_TRANSFORMER.remove();
 		NOISE_XZ_FREQUENCY.remove();
 		DebugInfo.chunkLoadingLevels.clear();

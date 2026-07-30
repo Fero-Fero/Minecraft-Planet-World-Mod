@@ -7,12 +7,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Stores a list of level and transformer pairs, corresponding to the levels/dimensions on the server.
  */
 public class TransformersStorage {
-	private static HashMap<ResourceKey<Level>, DimensionTransformer> transformers = new HashMap<>();
+	private static final Map<ResourceKey<Level>, DimensionTransformer> transformers = new HashMap<>();
 
 	/**
 	 * Returns the transformer for the requested level/dimension

@@ -87,15 +87,22 @@ public record PlanetSettings(
         return 0;
     }
 
+    /**
+     * Config-backed defaults, usable at any point during startup: registry bootstrap constructs
+     * chunk generators before the loader has read the config file.
+     */
     public static PlanetSettings defaults() {
-        int circumference = PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt();
+        boolean loaded = PlanetWorldConfig.configLoaded();
+        int circumference = loaded
+                ? PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt()
+                : PlanetWorldConfig.DEFAULT_CIRCUMFERENCE;
         return new PlanetSettings(
                 circumference,
                 effectiveCurvatureIntensityFor(circumference),
-                PlanetWorldConfig.ENABLE_LOCALIZED_TIME.getAsBoolean(),
-                PlanetWorldConfig.ENABLE_LOCALIZED_WEATHER.getAsBoolean(),
-                PlanetWorldConfig.ENABLE_ENTITY_WRAP.getAsBoolean(),
-                PlanetWorldConfig.ENABLE_CURVATURE_SHADER.getAsBoolean(),
+                loaded ? PlanetWorldConfig.ENABLE_LOCALIZED_TIME.getAsBoolean() : PlanetWorldConfig.DEFAULT_LOCALIZED_TIME,
+                loaded ? PlanetWorldConfig.ENABLE_LOCALIZED_WEATHER.getAsBoolean() : PlanetWorldConfig.DEFAULT_LOCALIZED_WEATHER,
+                loaded ? PlanetWorldConfig.ENABLE_ENTITY_WRAP.getAsBoolean() : PlanetWorldConfig.DEFAULT_ENTITY_WRAP,
+                loaded ? PlanetWorldConfig.ENABLE_CURVATURE_SHADER.getAsBoolean() : PlanetWorldConfig.DEFAULT_CURVATURE_SHADER,
                 WorldGenStyle.NORMAL
         );
     }

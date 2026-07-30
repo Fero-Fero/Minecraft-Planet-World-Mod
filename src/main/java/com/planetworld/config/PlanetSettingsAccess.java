@@ -23,6 +23,13 @@ public final class PlanetSettingsAccess {
     private static volatile PlanetSettings active;
     private static volatile PlanetSettings pending;
 
+    /**
+     * Settings are queried from worldgen and per-tick code, so the pending file is read once and then
+     * kept in memory until something writes it again.
+     */
+    private static volatile boolean pendingFileRead;
+    private static volatile PlanetSettings pendingFromFile;
+
     private PlanetSettingsAccess() {
     }
 
@@ -31,7 +38,7 @@ public final class PlanetSettingsAccess {
         if (current != null) {
             return current;
         }
-        PlanetSettings create = pending != null ? pending : readPendingFile();
+        PlanetSettings create = pendingOrFile();
         if (create != null) {
             return create;
         }
@@ -53,27 +60,45 @@ public final class PlanetSettingsAccess {
         } else {
             deletePendingFile();
         }
+        invalidatePendingFile();
     }
 
     @Nullable
     public static PlanetSettings getPending() {
-        if (pending != null) {
-            return pending;
-        }
-        return readPendingFile();
+        return pendingOrFile();
     }
 
     public static void clearPending() {
         pending = null;
         deletePendingFile();
+        invalidatePendingFile();
     }
 
     /** Consume pending settings for a brand-new world, or fall back to defaults. */
     public static PlanetSettings takePendingOrDefaults() {
-        PlanetSettings create = pending != null ? pending : readPendingFile();
+        PlanetSettings create = pendingOrFile();
         pending = null;
         deletePendingFile();
+        invalidatePendingFile();
         return create != null ? create : PlanetSettings.defaults();
+    }
+
+    @Nullable
+    private static PlanetSettings pendingOrFile() {
+        PlanetSettings inMemory = pending;
+        if (inMemory != null) {
+            return inMemory;
+        }
+        if (!pendingFileRead) {
+            pendingFromFile = readPendingFile();
+            pendingFileRead = true;
+        }
+        return pendingFromFile;
+    }
+
+    private static void invalidatePendingFile() {
+        pendingFromFile = null;
+        pendingFileRead = false;
     }
 
     private static void writePendingFile(PlanetSettings settings) {

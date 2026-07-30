@@ -18,7 +18,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
@@ -53,7 +52,7 @@ public abstract class ServerGamePacketListenerImplMixin {
 	 */
 	@ModifyVariable(method = "handleMovePlayer", at = @At("STORE"), index = 17, require = 3, expect = 3)
 	private double normalizePlayerMoveDeltaX(double deltaX) {
-		return normalizeWrappedDelta(deltaX, player.serverLevel().getTransformer().Coord.X.domainLength);
+		return player.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
 	}
 
 	/**
@@ -61,7 +60,7 @@ public abstract class ServerGamePacketListenerImplMixin {
 	 */
 	@ModifyVariable(method = "handleMovePlayer", at = @At("STORE"), index = 21, require = 3, expect = 3)
 	private double normalizePlayerMoveDeltaZ(double deltaZ) {
-		return normalizeWrappedDelta(deltaZ, player.serverLevel().getTransformer().Coord.Z.domainLength);
+		return player.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);
 	}
 
 	/**
@@ -70,7 +69,7 @@ public abstract class ServerGamePacketListenerImplMixin {
 	 */
 	@ModifyVariable(method = "handleMoveVehicle", at = @At("STORE"), index = 18, require = 3, expect = 3)
 	private double normalizeVehicleMoveDeltaX(double deltaX) {
-		return normalizeWrappedDelta(deltaX, player.serverLevel().getTransformer().Coord.X.domainLength);
+		return player.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
 	}
 
 	/**
@@ -78,22 +77,6 @@ public abstract class ServerGamePacketListenerImplMixin {
 	 */
 	@ModifyVariable(method = "handleMoveVehicle", at = @At("STORE"), index = 22, require = 3, expect = 3)
 	private double normalizeVehicleMoveDeltaZ(double deltaZ) {
-		return normalizeWrappedDelta(deltaZ, player.serverLevel().getTransformer().Coord.Z.domainLength);
-	}
-
-	/**
-	 * Raw wrapped deltas jump by one full domain when movement crosses a seam. Convert them back to
-	 * the shortest signed delta, which is what vanilla would have seen in an unwrapped world.
-	 */
-	@Unique
-	private static double normalizeWrappedDelta(double delta, int domainLength) {
-		double domainRadius = domainLength / 2.0;
-		if (delta > domainRadius) {
-			return delta - domainLength;
-		}
-		if (delta < -domainRadius) {
-			return delta + domainLength;
-		}
-		return delta;
+		return player.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);
 	}
 }

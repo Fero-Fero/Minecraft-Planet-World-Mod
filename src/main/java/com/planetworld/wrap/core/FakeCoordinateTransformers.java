@@ -56,6 +56,16 @@ public class FakeCoordinateTransformers extends CoordinateTransformers {
 			return toCoord - fromCoord;
 		}
 
+		@Override
+		public double shortestDelta(double delta) {
+			return delta;
+		}
+
+		@Override
+		public int shortestDelta(int delta) {
+			return delta;
+		}
+
 		public double sqrDistToBounds(double dist) {
 			return dist * dist;
 		}
