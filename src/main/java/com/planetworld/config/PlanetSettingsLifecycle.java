@@ -1,6 +1,7 @@
 package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
+import com.planetworld.wrap.compat.create.CreateWrapMath;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.network.SyncPlanetSettingsPayload;
 import com.planetworld.wrap.accessors.WorldWrappingSettingsAccessor;
@@ -156,6 +157,7 @@ public final class PlanetSettingsLifecycle {
 	@SubscribeEvent
 	public static void onServerStopping(ServerStoppingEvent event) {
 		TransformerRequests.clearSessionState();
+		CreateWrapMath.clearHealSession();
 		PlanetSettingsAccess.clearActive();
 		PlanetSettingsAccess.clearPending();
 	}
@@ -168,5 +170,6 @@ public final class PlanetSettingsLifecycle {
 	@SubscribeEvent
 	public static void onServerStopped(ServerStoppedEvent event) {
 		TransformerRequests.clearSessionState();
+		CreateWrapMath.clearHealSession();
 	}
 }

@@ -62,6 +62,10 @@ public final class CreateWrapMath {
 		if (dimension == null) {
 			return bestEffortTransformer();
 		}
+		// End is never a PlanetWorld torus — never fall through to Overworld/Nether wrap.
+		if (Level.END.equals(dimension)) {
+			return transformerForLoadedDimension(dimension);
+		}
 		MinecraftServer server = TransformerRequests.server;
 		if (server != null) {
 			ServerLevel level = server.getLevel(dimension);
@@ -77,8 +81,21 @@ public final class CreateWrapMath {
 		return bestEffortTransformer();
 	}
 
+	private static DimensionTransformer transformerForLoadedDimension(ResourceKey<Level> dimension) {
+		MinecraftServer server = TransformerRequests.server;
+		if (server != null) {
+			ServerLevel level = server.getLevel(dimension);
+			if (level != null) {
+				DimensionTransformer t = level.getTransformer();
+				return t != null ? t : DimensionTransformer.DISABLED;
+			}
+		}
+		return TransformersStorage.getTransformer(dimension);
+	}
+
 	/**
 	 * Best-effort transformer when a dimension key is not yet available (node construction).
+	 * Prefers an explicit {@link CreateWrapContext} level so End track never inherits Overworld wrap.
 	 */
 	public static DimensionTransformer bestEffortTransformer() {
 		DimensionTransformer override = OVERRIDE.get();
@@ -87,6 +104,10 @@ public final class CreateWrapMath {
 		}
 		Level ctx = CreateWrapContext.level();
 		if (ctx != null) {
+			if (Level.END.equals(ctx.dimension())) {
+				DimensionTransformer end = ctx.getTransformer();
+				return end != null ? end : DimensionTransformer.DISABLED;
+			}
 			DimensionTransformer t = ctx.getTransformer();
 			if (t != null && t.isWrapped()) {
 				return t;
@@ -95,6 +116,9 @@ public final class CreateWrapMath {
 		MinecraftServer server = TransformerRequests.server;
 		if (server != null) {
 			for (ServerLevel level : server.getAllLevels()) {
+				if (Level.END.equals(level.dimension())) {
+					continue;
+				}
 				DimensionTransformer t = level.getTransformer();
 				if (t != null && t.isWrapped()) {
 					return t;
@@ -102,7 +126,7 @@ public final class CreateWrapMath {
 			}
 		}
 		ServerLevel noise = TransformerRequests.noiseLevel;
-		if (noise != null) {
+		if (noise != null && !Level.END.equals(noise.dimension())) {
 			DimensionTransformer t = noise.getTransformer();
 			if (t != null && t.isWrapped()) {
 				return t;
@@ -267,6 +291,23 @@ public final class CreateWrapMath {
 		return t.isWrapped() ? t.Vector3D.unwrap(ref, wrapped) : wrapped;
 	}
 
+	/** Move {@code pos} onto the continuous representative nearest {@code ref}. */
+	public static BlockPos unwrapBlock(DimensionTransformer t, BlockPos ref, BlockPos pos) {
+		return t.isWrapped() ? t.Block.unwrap(ref, pos) : pos;
+	}
+
+	/**
+	 * Relative block offset from {@code from} to {@code to} along the short torus path.
+	 * Create stores station/signal targets as {@code selected.subtract(placePos)}; Euclidean
+	 * subtract across a bound writes a ~world-width offset and breaks assemble / overlay.
+	 */
+	public static BlockPos shortestBlockOffset(DimensionTransformer t, BlockPos from, BlockPos to) {
+		if (!t.isWrapped()) {
+			return to.subtract(from);
+		}
+		return unwrapBlock(t, from, to).subtract(from);
+	}
+
 	/**
 	 * Step from {@code from} to {@code to} along the shortest torus path.
 	 * <p>
@@ -324,6 +365,12 @@ public final class CreateWrapMath {
 	 */
 	private static final Set<ResourceKey<Level>> HEALED_DIMENSIONS = ConcurrentHashMap.newKeySet();
 	private static WeakReference<MinecraftServer> healSession = new WeakReference<>(null);
+
+	/** Clears one-shot seam-heal bookkeeping when the server session ends. */
+	public static synchronized void clearHealSession() {
+		HEALED_DIMENSIONS.clear();
+		healSession = new WeakReference<>(null);
+	}
 
 	/** True the first time a dimension asks in a given server session. */
 	public static synchronized boolean consumeSeamHeal(@Nullable ResourceKey<Level> dimension) {

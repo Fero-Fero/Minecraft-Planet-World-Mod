@@ -55,9 +55,10 @@ import java.util.*;
  * <p>
  * Dispatch is a direct lookup by packet class: every rewrite below is registered once, and the
  * registry is then checked against the declared {@code transformPacket} methods so a new rewrite
- * cannot be written and silently left unreachable. That check is the only reflection here, and it
- * runs once when the class loads — this used to invoke every rewrite reflectively, on a path that
- * sees every packet sent to every player.
+ * cannot be written and silently left unreachable. That check is the only reflection here (aside
+ * from a one-time probe for Sable's optional teleport trailer), and it runs once when the class
+ * loads — this used to invoke every rewrite reflectively, on a path that sees every packet sent to
+ * every player.
  */
 @SuppressWarnings("unchecked")
 public class PacketTransformer {
@@ -67,6 +68,14 @@ public class PacketTransformer {
 	}
 
 	private static final Map<Class<?>, Rewrite<Packet<?>>> REWRITES = new HashMap<>();
+
+	/**
+	 * Sable appends {@code actuallyInSubLevel} after vanilla teleport fields. {@code null} until the
+	 * first teleport rewrite probes the live packet class; never touch Minecraft types from a mixin
+	 * plugin, or other mods' LivingEntity mixins load too early.
+	 */
+	private static volatile Boolean sableTeleportTrailerPresent;
+	private static volatile Method sableIsActuallyInSubLevel;
 
 	static Logger LOGGER = LogUtils.getLogger();
 
@@ -771,7 +780,36 @@ public class PacketTransformer {
 			buffer.writeByte(packet.getyRot());
 			buffer.writeByte(packet.getxRot());
 			buffer.writeBoolean(packet.isOnGround());
+			appendSableTeleportTrailer(buffer, packet);
 		});
+	}
+
+	/**
+	 * When Sable is present it reads one more boolean after {@code onGround}. Rebuild the same shape
+	 * or decode overruns the buffer and crashes on send. Probe the live packet once — do not load
+	 * Sable types from a mixin plugin.
+	 */
+	private static void appendSableTeleportTrailer(ByteBuf buffer, ClientboundTeleportEntityPacket packet) {
+		Boolean present = sableTeleportTrailerPresent;
+		if (present == null) {
+			try {
+				Method method = packet.getClass().getMethod("sable$isActuallyInSubLevel");
+				sableIsActuallyInSubLevel = method;
+				sableTeleportTrailerPresent = Boolean.TRUE;
+				present = Boolean.TRUE;
+			} catch (NoSuchMethodException e) {
+				sableTeleportTrailerPresent = Boolean.FALSE;
+				present = Boolean.FALSE;
+			}
+		}
+		if (!present) {
+			return;
+		}
+		try {
+			buffer.writeBoolean((boolean) sableIsActuallyInSubLevel.invoke(packet));
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException("Failed to preserve Sable teleport sub-level flag", e);
+		}
 	}
 
 	private static ClientboundBundlePacket transformPacket(ClientboundBundlePacket packet, ServerPlayer player) {

@@ -7,13 +7,11 @@
  *
  * <h2>Coordinate invariants</h2>
  * <ul>
- *   <li><b>Server positions are wrapped.</b> Every {@code ChunkPos}, {@code SectionPos} and
- *       {@code BlockPos} the server stores, tickets, generates or keys a map by lies inside the
- *       domain. The choke points that enforce it are {@code ServerChunkCache} for loading and
- *       generation and {@code DistanceManager} / {@code TickingTracker} for tickets, so a caller
- *       that computes a position by walking off the edge of the world — a path region, a Create
- *       track lookahead, a Sable physics prediction box — resolves to the real chunk instead of
- *       generating a second copy of the world outside the bound.</li>
+ *   <li><b>Server load/gen positions are wrapped.</b> Every {@code ChunkPos} that
+ *       {@code ServerChunkCache} loads or generates is folded into the domain. Ticket keys may still
+ *       name an out-of-domain neighbour when the player ticket square straddles a bound — remapping
+ *       those keys collapsed loading on small worlds — but the getChunk choke point still resolves
+ *       them to the real chunk.</li>
  *   <li><b>Client positions are continuous.</b> The client is never told about the seam: chunk and
  *       entity packets are remapped against the player's continuous {@code clientX}/{@code clientZ}
  *       so motion, cameras and interpolation never jump. Unwrapping exists for the packet layer and

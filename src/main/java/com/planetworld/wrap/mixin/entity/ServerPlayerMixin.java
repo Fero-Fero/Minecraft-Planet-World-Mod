@@ -14,8 +14,6 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
-	ServerPlayer thiz = (ServerPlayer) (Object) this;
-
 	@Shadow
 	public abstract ServerLevel serverLevel();
 
@@ -24,7 +22,8 @@ public abstract class ServerPlayerMixin {
 	 */
 	@ModifyVariable(method = "isReachableBedBlock", at = @At("HEAD"), index = 1, argsOnly = true)
 	public BlockPos modifyBlockPos(BlockPos blockPos) {
-		return this.serverLevel().getTransformer().Block.unwrap(thiz.blockPosition(), blockPos);
+		ServerPlayer self = (ServerPlayer) (Object) this;
+		return this.serverLevel().getTransformer().Block.unwrap(self.blockPosition(), blockPos);
 	}
 
 	/**

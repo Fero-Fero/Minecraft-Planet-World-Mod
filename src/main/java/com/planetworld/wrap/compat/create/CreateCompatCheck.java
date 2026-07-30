@@ -15,6 +15,8 @@ import net.neoforged.fml.ModList;
 public final class CreateCompatCheck {
 	private static final String[] PATCHED_CLASSES = {
 			"com.simibubi.create.content.contraptions.AbstractContraptionEntity",
+			"com.simibubi.create.content.redstone.displayLink.ClickToLinkBlockItem",
+			"com.simibubi.create.content.schematics.cannon.SchematicannonBlockEntity",
 			"com.simibubi.create.content.trains.GlobalRailwayManager",
 			"com.simibubi.create.content.trains.entity.Carriage",
 			"com.simibubi.create.content.trains.entity.Carriage$DimensionalCarriageEntity",
@@ -33,6 +35,7 @@ public final class CreateCompatCheck {
 			"com.simibubi.create.content.trains.track.ITrackBlock",
 			"com.simibubi.create.content.trains.track.TrackPlacement",
 			"com.simibubi.create.content.trains.track.TrackPropagator",
+			"com.simibubi.create.content.trains.track.TrackTargetingBehaviour",
 			"com.simibubi.create.content.trains.track.TrackTargetingBlockItem",
 	};
 

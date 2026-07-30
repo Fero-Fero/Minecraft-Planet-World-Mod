@@ -13,6 +13,9 @@ import java.util.Set;
  * <p>
  * Create Aeronautics, Simulated, and Offroad all sit on Sable, so gating on Sable alone covers the
  * whole physics-vehicle stack.
+ * <p>
+ * Do not load Minecraft game classes from {@link #onLoad}: that pulls targets in before other mods
+ * (e.g. Saturn) can mixin them and aborts launch with {@code MixinTargetAlreadyLoadedException}.
  */
 public final class SableMixinPlugin implements IMixinConfigPlugin {
 	private static final boolean SABLE_LOADED = LoadingModList.get().getModFileById("sable") != null;

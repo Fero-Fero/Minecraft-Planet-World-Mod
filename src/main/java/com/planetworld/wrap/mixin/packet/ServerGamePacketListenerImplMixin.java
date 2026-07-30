@@ -2,14 +2,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-/* SPDX-License-Identifier: AGPL-3.0-only */
-
 package com.planetworld.wrap.mixin.packet;
 
 import com.planetworld.wrap.core.DimensionTransformer;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerPlayerGameMode;
@@ -33,7 +33,7 @@ public abstract class ServerGamePacketListenerImplMixin {
 	}
 
 	@WrapOperation(method = "handlePlayerAction", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayerGameMode;handleBlockBreakAction(Lnet/minecraft/core/BlockPos;Lnet/minecraft/network/protocol/game/ServerboundPlayerActionPacket$Action;Lnet/minecraft/core/Direction;II)V"), require = 1)
-	private void wrapBlockPos(ServerPlayerGameMode instance, BlockPos pos, net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action action, net.minecraft.core.Direction direction, int worldHeight, int sequence, Operation<Void> original) {
+	private void wrapBlockPos(ServerPlayerGameMode instance, BlockPos pos, ServerboundPlayerActionPacket.Action action, Direction direction, int worldHeight, int sequence, Operation<Void> original) {
 		original.call(instance, player.serverLevel().getTransformer().Block.wrap(pos), action, direction, worldHeight, sequence);
 	}
 
@@ -46,35 +46,25 @@ public abstract class ServerGamePacketListenerImplMixin {
 	}
 
 	/**
-	 * Vanilla computes the wrapped X delta three times in handleMovePlayer:
-	 * first-good, last-good, and post-move residual. Normalize each store to the shortest wrapped
-	 * delta so every later check in the method sees the same seam-aware X movement.
+	 * Vanilla stores the X move delta three times in handleMovePlayer (first-good, last-good,
+	 * post-move). NeoForge production bytecode does not keep a single LVT name for all three, so
+	 * slot indexes (with require/expect) are the reliable bind — a renumber fails loud.
 	 */
 	@ModifyVariable(method = "handleMovePlayer", at = @At("STORE"), index = 17, require = 3, expect = 3)
 	private double normalizePlayerMoveDeltaX(double deltaX) {
 		return player.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
 	}
 
-	/**
-	 * Same as {@link #normalizePlayerMoveDeltaX(double)} for Z.
-	 */
 	@ModifyVariable(method = "handleMovePlayer", at = @At("STORE"), index = 21, require = 3, expect = 3)
 	private double normalizePlayerMoveDeltaZ(double deltaZ) {
 		return player.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);
 	}
 
-	/**
-	 * Vehicle movement has the same wrapped-delta problem for the root vehicle. Normalize each X store
-	 * so both the fast-move and moved-wrongly checks see the shortest seam-crossing delta.
-	 */
 	@ModifyVariable(method = "handleMoveVehicle", at = @At("STORE"), index = 18, require = 3, expect = 3)
 	private double normalizeVehicleMoveDeltaX(double deltaX) {
 		return player.serverLevel().getTransformer().Coord.X.shortestDelta(deltaX);
 	}
 
-	/**
-	 * Same as {@link #normalizeVehicleMoveDeltaX(double)} for Z.
-	 */
 	@ModifyVariable(method = "handleMoveVehicle", at = @At("STORE"), index = 22, require = 3, expect = 3)
 	private double normalizeVehicleMoveDeltaZ(double deltaZ) {
 		return player.serverLevel().getTransformer().Coord.Z.shortestDelta(deltaZ);

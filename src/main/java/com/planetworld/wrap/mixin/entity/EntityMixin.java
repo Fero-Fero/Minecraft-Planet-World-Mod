@@ -32,7 +32,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityMixin {
 	@Shadow private Level level;
 
-	Entity thiz = (Entity) (Object) this;
+	@Unique
+	private Entity planetworld$self() {
+		return (Entity) (Object) this;
+	}
 
 	@Unique
 	private DimensionTransformer planetworld$serverTransformer() {
@@ -54,10 +57,11 @@ public abstract class EntityMixin {
 	@Inject(method = "closerThan(Lnet/minecraft/world/entity/Entity;DD)Z", at = @At("HEAD"), cancellable = true)
 	public void wrapCloserThan(Entity entity, double horizontalDistance, double verticalDistance, CallbackInfoReturnable<Boolean> cir) {
 		DimensionTransformer transformer = planetworld$serverTransformer();
+		Entity self = planetworld$self();
 
-		double d = entity.getX() - transformer.Coord.X.unwrap(entity.getX(), thiz.getX());
-		double e = entity.getY() - thiz.getY();
-		double f = entity.getZ() - transformer.Coord.Z.unwrap(entity.getZ(), thiz.getZ());
+		double d = entity.getX() - transformer.Coord.X.unwrap(entity.getX(), self.getX());
+		double e = entity.getY() - self.getY();
+		double f = entity.getZ() - transformer.Coord.Z.unwrap(entity.getZ(), self.getZ());
 		cir.setReturnValue(Mth.lengthSquared(d, f) < Mth.square(horizontalDistance) && Mth.square(e) < Mth.square(verticalDistance));
 	}
 
@@ -74,18 +78,19 @@ public abstract class EntityMixin {
 			return;
 		}
 
+		Entity self = planetworld$self();
 		double wrappedX = transformer.Coord.X.wrap(x);
 		double wrappedZ = transformer.Coord.Z.wrap(z);
 
 		if (wrappedX != x) {
 			double shift = wrappedX - x;
-			thiz.xo += shift;
-			thiz.xOld += shift;
+			self.xo += shift;
+			self.xOld += shift;
 		}
 		if (wrappedZ != z) {
 			double shift = wrappedZ - z;
-			thiz.zo += shift;
-			thiz.zOld += shift;
+			self.zo += shift;
+			self.zOld += shift;
 		}
 
 		original.call(wrappedX, y, wrappedZ);
@@ -97,10 +102,11 @@ public abstract class EntityMixin {
 	 */
 	@Unique
 	private boolean planetworld$wrapsOwnPosition() {
-		if (thiz instanceof WrapsOwnPosition) {
+		Entity self = planetworld$self();
+		if (self instanceof WrapsOwnPosition) {
 			return true;
 		}
-		return thiz.getVehicle() instanceof WrapsOwnPosition;
+		return self.getVehicle() instanceof WrapsOwnPosition;
 	}
 
 	@Redirect(method = "isColliding", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/shapes/Shapes;joinIsNotEmpty(Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/BooleanOp;)Z"))
@@ -121,10 +127,11 @@ public abstract class EntityMixin {
 		if (!transformer.isWrapped()) {
 			return original.call(x, y, z);
 		}
+		Entity self = planetworld$self();
 		return original.call(
-				transformer.Coord.X.unwrap(thiz.getX(), x),
+				transformer.Coord.X.unwrap(self.getX(), x),
 				y,
-				transformer.Coord.Z.unwrap(thiz.getZ(), z)
+				transformer.Coord.Z.unwrap(self.getZ(), z)
 		);
 	}
 
@@ -134,7 +141,7 @@ public abstract class EntityMixin {
 		if (!transformer.isWrapped()) {
 			return original.call(vec);
 		}
-		return original.call(transformer.Vector3D.unwrap(thiz.position(), vec));
+		return original.call(transformer.Vector3D.unwrap(planetworld$self().position(), vec));
 	}
 
 	/**
@@ -147,16 +154,16 @@ public abstract class EntityMixin {
 		if (!transformer.isWrapped()) {
 			return original.call(entity);
 		}
-		return (float) Math.sqrt(thiz.distanceToSqr(entity.position()));
+		return (float) Math.sqrt(planetworld$self().distanceToSqr(entity.position()));
 	}
 
 	@Redirect(method = "push(Lnet/minecraft/world/entity/Entity;)V", at = @At(value="INVOKE", target ="Lnet/minecraft/world/entity/Entity;getX()D", ordinal = 0))
 	public double modifyGetX(Entity entity) {
-		return planetworld$serverTransformer().Coord.X.unwrap(thiz.getX(), entity.getX());
+		return planetworld$serverTransformer().Coord.X.unwrap(planetworld$self().getX(), entity.getX());
 	}
 
 	@Redirect(method = "push(Lnet/minecraft/world/entity/Entity;)V", at = @At(value="INVOKE", target ="Lnet/minecraft/world/entity/Entity;getZ()D", ordinal = 0))
 	public double modifyGetZ(Entity entity) {
-		return planetworld$serverTransformer().Coord.Z.unwrap(thiz.getZ(), entity.getZ());
+		return planetworld$serverTransformer().Coord.Z.unwrap(planetworld$self().getZ(), entity.getZ());
 	}
 }

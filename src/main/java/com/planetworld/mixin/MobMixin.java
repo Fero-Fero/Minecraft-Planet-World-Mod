@@ -1,29 +1,40 @@
 package com.planetworld.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.time.LocalTime;
 import com.planetworld.wrap.WrapMath;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Undead sun-burn uses local day at the mob's X instead of global day.
+ * Undead sun-burn must follow local day at the mob's X.
+ * <p>
+ * Patching only {@code Level.isDay()} is not enough: during global night the sky-light map is
+ * dark planet-wide, so {@code getLightLevelDependentMagicValue()} stays below the burn threshold
+ * even when this longitude is local noon. Rebuild the vanilla check with local sun exposure.
  */
 @Mixin(Mob.class)
 public abstract class MobMixin {
-    @WrapOperation(
-            method = "isSunBurnTick",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;isDay()Z")
-    )
-    private boolean planetworld$localIsDay(Level level, Operation<Boolean> original) {
-        if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
-            return original.call(level);
-        }
-        Mob self = (Mob) (Object) this;
-        return LocalTime.isDay(level, self.getX());
-    }
+	@WrapMethod(method = "isSunBurnTick")
+	private boolean planetworld$localSunBurn(Operation<Boolean> original) {
+		Mob self = (Mob) (Object) this;
+		Level level = self.level();
+		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level) || level.isClientSide) {
+			return original.call();
+		}
+		if (!LocalTime.isSunBurnTime(level, self.getX())) {
+			return false;
+		}
+		float exposure = LocalTime.sunExposure(level, self.getX());
+		BlockPos eye = BlockPos.containing(self.getX(), self.getEyeY(), self.getZ());
+		boolean sheltered = self.isInWaterRainOrBubble() || self.isInPowderSnow || self.wasInPowderSnow;
+		return exposure > 0.5F
+				&& self.getRandom().nextFloat() * 30.0F < (exposure - 0.4F) * 2.0F
+				&& !sheltered
+				&& level.canSeeSky(eye);
+	}
 }

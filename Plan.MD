@@ -8,7 +8,7 @@ Target Architecture
 
     Mod Loader: NeoForge 1.21.1
 
-    Dependencies: Citadel (core entity/data hooks), GeckoLib (if custom animations are needed)
+    Dependencies: NeoForge 1.21.1 only for core (Citadel / GeckoLib not used)
 
     Core Concept: Flat physics, continuous chunk wrapping, localized time authority, and curved rendering.
 

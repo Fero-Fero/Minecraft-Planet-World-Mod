@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "MobMixin",
+    "MonsterMixin",
     "CropBlockMixin",
     "DaylightDetectorBlockMixin",
     "FireBlockMixin",

@@ -132,6 +132,7 @@ public final class CreateWrapMathSelfCheck {
 			checkShortestDelta(t, halfPeriodBlocks);
 			checkSeamMargin(t, halfPeriodBlocks);
 			checkBogeyGeometry(t, halfPeriodBlocks);
+			checkPlacementRebase(t, halfPeriodBlocks);
 
 			// 16-block Create segment across the seam must be a short unwrap / long Euclidean pair
 			Vec3 beforeSeam = new Vec3(0.5, 64.0, upper - 16.0);
@@ -144,6 +145,33 @@ public final class CreateWrapMathSelfCheck {
 			}
 		} finally {
 			CreateWrapMath.popOverride();
+		}
+	}
+
+	/**
+	 * Track connect across a bound: wrapped +250 and continuous -252 must rebase to a ~10-block
+	 * chord, and station TargetTrack offsets must stay short — not a full circumference.
+	 */
+	private static void checkPlacementRebase(DimensionTransformer t, int halfPeriodBlocks) {
+		BlockPos wrappedOutside = new BlockPos(-234, 104, halfPeriodBlocks - 6); // e.g. +250 at C=256
+		// User case: one end past the cut (continuous -262 ≡ wrapped +250), other at -252.
+		BlockPos continuousPast = new BlockPos(-234, 104, -(halfPeriodBlocks + 6));
+		BlockPos insideNear = new BlockPos(-242, 104, -(halfPeriodBlocks - 4));
+		BlockPos rebased = CreateWrapMath.unwrapBlock(t, insideNear, t.Block.wrap(continuousPast));
+		double chord = Math.sqrt(distSqr(rebased, insideNear));
+		if (chord > 32.0) {
+			fail("C=" + halfPeriodBlocks + ": rebased connect chord should be short, got " + chord
+					+ " from " + rebased + " to " + insideNear);
+		}
+		BlockPos longWay = CreateWrapMath.shortestBlockOffset(t, insideNear, t.Block.wrap(continuousPast));
+		if (Math.abs(longWay.getZ()) > 32 || Math.abs(longWay.getX()) > 32) {
+			fail("C=" + halfPeriodBlocks + ": station relative offset must be short-path, got " + longWay);
+		}
+		// Sanity: wrappedOutside near +bound should unwrap next to insideNear when that is the ref.
+		BlockPos fromWrapped = CreateWrapMath.unwrapBlock(t, insideNear, wrappedOutside);
+		if (Math.sqrt(distSqr(fromWrapped, insideNear)) > 32.0) {
+			fail("C=" + halfPeriodBlocks + ": unwrap(wrapped outside) should sit near insideNear, got "
+					+ fromWrapped);
 		}
 	}
 

@@ -8,12 +8,19 @@ import com.planetworld.wrap.accessors.TransformerAccessor;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.TickingTracker;
-import org.spongepowered.asm.mixin.*;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 /**
- * Pass to {@link com.planetworld.wrap.mixin.chunk.ChunkTrackerMixin} instances
+ * Passes the level transformer into every chunk-tracker the distance manager owns.
+ * <p>
+ * Ticket <em>positions</em> are intentionally not remapped here. Player tickets near a bound are
+ * placed on a Euclidean square that can include out-of-domain neighbours; wrapping those onto the
+ * far side of a small torus collapses the loaded area to a few chunks. Out-of-domain generation is
+ * still impossible because {@code ServerChunkCache} wraps every getChunk path.
  */
 @Mixin(DistanceManager.class)
 public abstract class DistanceManagerMixin implements TransformerAccessor {
@@ -31,36 +38,6 @@ public abstract class DistanceManagerMixin implements TransformerAccessor {
 		this.playerTicketManager.setTransformer(this.getTransformer());
 		this.ticketTracker.setTransformer(this.getTransformer());
 		this.tickingTicketsTracker.setTransformer(this.getTransformer());
-	}
-
-	/**
-	 * Every public ticket entry point funnels through this pair, so keeping the domain here means a
-	 * caller that never went through {@code ServerChunkCache} still cannot ticket — and therefore
-	 * cannot generate — a chunk outside the torus. Sable's physics prediction is one such caller: it
-	 * derives chunk bounds from a sub-level's world bounding box and tickets them directly, which
-	 * runs past the domain as soon as a vehicle approaches a bound.
-	 * <p>
-	 * Add and remove share the mapping, so a ticket can always be released with the key it was
-	 * stored under. Inside the domain the wrap is the identity, which is every request away from a
-	 * bound.
-	 */
-	@ModifyVariable(method = "addTicket(JLnet/minecraft/server/level/Ticket;)V", at = @At("HEAD"), argsOnly = true, index = 1)
-	private long planetworld$wrapAddedTicketPos(long chunkPos) {
-		return planetworld$wrapTicketPos(chunkPos);
-	}
-
-	@ModifyVariable(method = "removeTicket(JLnet/minecraft/server/level/Ticket;)V", at = @At("HEAD"), argsOnly = true, index = 1)
-	private long planetworld$wrapRemovedTicketPos(long chunkPos) {
-		return planetworld$wrapTicketPos(chunkPos);
-	}
-
-	@Unique
-	private long planetworld$wrapTicketPos(long chunkPos) {
-		DimensionTransformer transformer = this.getTransformer();
-		if (transformer == null || !transformer.isWrapped()) {
-			return chunkPos;
-		}
-		return transformer.Chunk.wrapLong(chunkPos);
 	}
 
 	DimensionTransformer transformer;

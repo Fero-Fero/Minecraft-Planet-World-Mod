@@ -5,6 +5,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.planetworld.wrap.compat.create.CreateWrapContext;
 import com.planetworld.wrap.compat.create.CreateWrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
+import com.simibubi.create.AllDataComponents;
+import com.simibubi.create.content.trains.track.ITrackBlock;
 import com.simibubi.create.content.trains.track.TrackPlacement;
 import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.BlockPos;
@@ -13,14 +15,22 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Wrap-aware track placement distance and block writes across the torus seam.
+ * <p>
+ * Distance redirects alone are not enough: {@code BezierConnection} is built from absolute
+ * {@code ConnectingFrom} / curve-start positions. When one end is wrapped (+bound) and the other
+ * is continuous past the cut, Create draws a world-width U-turn. Rebase both ends into one
+ * continuous frame before curve math; wrap world access so OOB continuous coords still hit the
+ * real track blocks.
  */
 @Mixin(TrackPlacement.class)
 public abstract class TrackPlacementMixin {
@@ -38,10 +48,49 @@ public abstract class TrackPlacementMixin {
 	) {
 		Level previous = CreateWrapContext.push(level);
 		try {
-			return original.call(level, player, pos2, state2, stack, girder, maximiseTurn);
+			DimensionTransformer t = CreateWrapMath.transformer(level);
+			if (!t.isWrapped()) {
+				return original.call(level, player, pos2, state2, stack, girder, maximiseTurn);
+			}
+			// Keep the caller's pos2/state2. Client continuous often has a valid track state at an
+			// OOB pos while wrap(pos2) lands on air — replacing state2 caused ClassCastException.
+			// Prefer wrapped storage only when that cell is actually a track.
+			BlockPos target = pos2;
+			BlockState targetState = state2;
+			BlockPos wrapped = t.Block.wrap(pos2);
+			if (!wrapped.equals(pos2)) {
+				BlockState wrappedState = level.getBlockState(wrapped);
+				if (wrappedState.getBlock() instanceof ITrackBlock) {
+					target = wrapped;
+					targetState = wrappedState;
+				}
+			}
+			ItemStack rebased = planetworld$rebaseConnectingFrom(stack, target, t);
+			return original.call(level, player, target, targetState, rebased, girder, maximiseTurn);
 		} finally {
 			CreateWrapContext.pop(previous);
 		}
+	}
+
+	/**
+	 * Put {@code ConnectingFrom.pos/end} on the continuous representative nearest {@code target}
+	 * so Bezier control points span the short path (e.g. z=+250 ↔ z=-252 → z=-262 ↔ z=-252).
+	 */
+	@Unique
+	private static ItemStack planetworld$rebaseConnectingFrom(ItemStack stack, BlockPos target, DimensionTransformer t) {
+		TrackPlacement.ConnectingFrom from = stack.get(AllDataComponents.TRACK_CONNECTING_FROM);
+		if (from == null) {
+			return stack;
+		}
+		BlockPos rebasedPos = CreateWrapMath.unwrapBlock(t, target, from.pos());
+		Vec3 rebasedEnd = CreateWrapMath.unwrapRelative(t, Vec3.atLowerCornerOf(target), from.end());
+		if (rebasedPos.equals(from.pos()) && rebasedEnd.equals(from.end())) {
+			return stack;
+		}
+		ItemStack copy = stack.copy();
+		copy.set(AllDataComponents.TRACK_CONNECTING_FROM,
+				new TrackPlacement.ConnectingFrom(rebasedPos, from.axis(), from.normal(), rebasedEnd));
+		return copy;
 	}
 
 	@Redirect(
@@ -99,6 +148,28 @@ public abstract class TrackPlacementMixin {
 		return VecHelper.intersect(p1, CreateWrapMath.unwrapRelative(t, p1, p2), r1, r2, axis);
 	}
 
+	@Redirect(
+			method = "tryConnect",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/world/level/Level;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
+			)
+	)
+	private static BlockState planetworld$tryConnectGetBlockState(Level level, BlockPos pos) {
+		return level.getBlockState(CreateWrapMath.wrapPos(level, pos));
+	}
+
+	@Redirect(
+			method = "tryConnect",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/world/level/Level;getBlockEntity(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/entity/BlockEntity;"
+			)
+	)
+	private static BlockEntity planetworld$tryConnectGetBlockEntity(Level level, BlockPos pos) {
+		return level.getBlockEntity(CreateWrapMath.wrapPos(level, pos));
+	}
+
 	@WrapMethod(method = "placeTracks")
 	private static TrackPlacement.PlacementInfo wrapPlaceTracks(
 			Level level,
@@ -150,7 +221,7 @@ public abstract class TrackPlacementMixin {
 					target = "Lnet/minecraft/world/level/Level;getBlockEntity(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/entity/BlockEntity;"
 			)
 	)
-	private static net.minecraft.world.level.block.entity.BlockEntity planetworld$wrapGetBlockEntity(Level level, BlockPos pos) {
+	private static BlockEntity planetworld$wrapGetBlockEntity(Level level, BlockPos pos) {
 		return level.getBlockEntity(CreateWrapMath.wrapPos(level, pos));
 	}
 }

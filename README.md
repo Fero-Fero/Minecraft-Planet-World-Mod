@@ -26,9 +26,36 @@ Requires **JDK 21**.
 
 ```bat
 gradlew.bat build
+gradlew.bat check
 ```
 
+`check` includes `verifyCreateWrapMath`, `verifyCreateCompatJar`, and `verifySableCompatJar`.
+
 Jar output: `build/libs/planetworld-1.0.0.jar`
+
+## Optional mod compatibility
+
+| Stack | Status | Notes |
+|-------|--------|--------|
+| **Create 6.0.10** | Soft dependency | Train circumnavigation + graph/signal substrate + schematicannon / display-link range. Newer 6.0.x: `CreateCompatCheck` fails loud at setup if internals moved. |
+| **Sable 2.0.x** | Soft dependency | Sub-level pose wrap + distance + broadcast projector + teleport trailer. |
+| **Create Aeronautics (bundled)** | Soft dependency | Same Sable substrate; vehicle acceptance still playtest. |
+| Citadel / GeckoLib | **Not used** | — |
+
+Dev runtime flags:
+
+```bat
+gradlew.bat runServer -PwithCreateRuntime
+gradlew.bat runClient -PwithSableRuntime -PwithAeronauticsRuntime
+```
+
+Sable/Aeronautics jars are copied from `mods/` or `run/mods/` (not Maven).
+
+### Changelog (compat)
+
+- Travel “rescue after blocked” **removed** — seam edges come from discovery / one-shot heal only.
+- Create G6–G7 code pass: End transformer guard, schematicannon + click-to-link torus range, heal session clear on stop.
+- Core: pathfinder wrap neighbours, LVT-named move deltas, Level clip short-path.
 
 ## Run (dev)
 

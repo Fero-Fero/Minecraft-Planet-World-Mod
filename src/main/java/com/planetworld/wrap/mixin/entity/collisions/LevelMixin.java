@@ -30,11 +30,9 @@ public abstract class LevelMixin<T extends Entity> {
 	@Shadow protected abstract LevelEntityGetter<Entity> getEntities();
 	@Shadow public abstract ProfilerFiller getProfiler();
 
-	Level thiz = (Level) (Object) this;
-
 	@ModifyVariable(method = {"getBlockState", "getFluidState", "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z", "removeBlock", "destroyBlock"}, at = @At("HEAD"), argsOnly = true, index = 1)
 	public BlockPos modifyBlockPos(BlockPos blockPos) {
-		return thiz.getTransformer().SSO().Block.wrap(blockPos);
+		return ((Level) (Object) this).getTransformer().SSO().Block.wrap(blockPos);
 	}
 
 	/**
@@ -42,9 +40,10 @@ public abstract class LevelMixin<T extends Entity> {
 	 */
 	@Inject(method = "getEntities(Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;Ljava/util/List;I)V", at = @At("HEAD"), cancellable = true)
 	public void getEntities(EntityTypeTest<Entity, T> entityTypeTest, AABB bounds, Predicate<? super T> predicate, List<? super T> output, int maxResults, CallbackInfo ci) {
-		if(thiz.isClientSide) return;
+		Level level = (Level) (Object) this;
+		if(level.isClientSide) return;
 		ci.cancel();
-		DimensionTransformer transformer = thiz.getTransformer();
+		DimensionTransformer transformer = level.getTransformer();
 
 		this.getProfiler().incrementCounter("getEntities");
 		List<AABB> boxes = transformer.AABoundingBox.splitAcrossBounds(bounds);

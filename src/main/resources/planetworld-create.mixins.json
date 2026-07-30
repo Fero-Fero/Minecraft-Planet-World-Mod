@@ -7,6 +7,8 @@
   "mixins": [
     "AbstractContraptionEntityMixin",
     "BezierConnectionRuntimeMixin",
+    "ClickToLinkBlockItemMixin",
+    "SchematicannonBlockEntityMixin",
     "TrackPlacementMixin",
     "TrackNodeLocationMixin",
     "ITrackBlockMixin",
@@ -14,6 +16,7 @@
     "TrackGraphMixin",
     "TrackGraphHelperMixin",
     "TrackTargetingBlockItemMixin",
+    "TrackTargetingBehaviourMixin",
     "StationBlockEntityMixin",
     "TrackPropagatorMixin",
     "TravellingPointMixin",
@@ -26,7 +29,9 @@
     "CarriageEntityHandlerMixin",
     "CarriageAnchorMixin"
   ],
-  "client": [],
+  "client": [
+    "TrackTargetingClientMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
