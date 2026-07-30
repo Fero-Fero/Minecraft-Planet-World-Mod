@@ -23,7 +23,12 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(Entity.class)
+/**
+ * Priority 2000 so the wrappers below sit outside anything else that owns these methods. Sable
+ * {@code @Overwrite}s all three distance queries to reach into sub-levels; applying last means Planet
+ * World corrects the operands and then hands them to that body instead of replacing it.
+ */
+@Mixin(value = Entity.class, priority = 2000)
 public abstract class EntityMixin {
 	@Shadow private Level level;
 
@@ -105,19 +110,44 @@ public abstract class EntityMixin {
 		return Shapes.joinIsNotEmpty(shape1, result, resultOperator);
 	}
 
-	@Inject(method = "distanceTo", at = @At("HEAD"), cancellable = true)
-	public void wrapDistanceSquared1(Entity entity, CallbackInfoReturnable<Float> cir) {
-		cir.setReturnValue(Mth.sqrt((float)planetworld$serverTransformer().Coord.sqrDistToBounds(entity.getX(), entity.getY(), entity.getZ(), thiz.getX(), thiz.getY(), thiz.getZ())));
+	/**
+	 * Measure to the nearest representative of the queried point rather than answering here, so an
+	 * owner of this method keeps its own reading. When both points sit on the same side of every bound
+	 * the arguments are unchanged, which is every query away from a seam.
+	 */
+	@WrapMethod(method = "distanceToSqr(DDD)D")
+	private double planetworld$torusDistanceToSqr(double x, double y, double z, Operation<Double> original) {
+		DimensionTransformer transformer = planetworld$serverTransformer();
+		if (!transformer.isWrapped()) {
+			return original.call(x, y, z);
+		}
+		return original.call(
+				transformer.Coord.X.unwrap(thiz.getX(), x),
+				y,
+				transformer.Coord.Z.unwrap(thiz.getZ(), z)
+		);
 	}
 
-	@Inject(method = "distanceToSqr(DDD)D", at = @At("HEAD"), cancellable = true)
-	public void wrapDistanceSquared2(double x, double y, double z, CallbackInfoReturnable<Double> cir) {
-		cir.setReturnValue(planetworld$serverTransformer().Coord.sqrDistToBounds(x, y, z, thiz.getX(), thiz.getY(), thiz.getZ()));
+	@WrapMethod(method = "distanceToSqr(Lnet/minecraft/world/phys/Vec3;)D")
+	private double planetworld$torusDistanceToSqrVec(Vec3 vec, Operation<Double> original) {
+		DimensionTransformer transformer = planetworld$serverTransformer();
+		if (!transformer.isWrapped()) {
+			return original.call(vec);
+		}
+		return original.call(transformer.Vector3D.unwrap(thiz.position(), vec));
 	}
 
-	@Inject(method = "distanceToSqr(Lnet/minecraft/world/phys/Vec3;)D", at = @At("HEAD"), cancellable = true)
-	public void wrapDistanceSquared3(Vec3 vec, CallbackInfoReturnable<Double> cir) {
-		cir.setReturnValue(planetworld$serverTransformer().Vector3D.sqrDistToBounds(vec, new Vec3(thiz.getX(), thiz.getY(), thiz.getZ())));
+	/**
+	 * Vanilla measures this inline instead of delegating, so route it through {@code distanceToSqr}
+	 * where the unwrap above already applies.
+	 */
+	@WrapMethod(method = "distanceTo")
+	private float planetworld$torusDistanceTo(Entity entity, Operation<Float> original) {
+		DimensionTransformer transformer = planetworld$serverTransformer();
+		if (!transformer.isWrapped()) {
+			return original.call(entity);
+		}
+		return (float) Math.sqrt(thiz.distanceToSqr(entity.position()));
 	}
 
 	@Redirect(method = "push(Lnet/minecraft/world/entity/Entity;)V", at = @At(value="INVOKE", target ="Lnet/minecraft/world/entity/Entity;getX()D", ordinal = 0))

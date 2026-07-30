@@ -47,53 +47,110 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
 /**
  * Transforms packets into their wrapped counterparts.
+ * <p>
+ * Dispatch is a direct lookup by packet class: every rewrite below is registered once, and the
+ * registry is then checked against the declared {@code transformPacket} methods so a new rewrite
+ * cannot be written and silently left unreachable. That check is the only reflection here, and it
+ * runs once when the class loads — this used to invoke every rewrite reflectively, on a path that
+ * sees every packet sent to every player.
  */
-@SuppressWarnings({"unused", "unchecked"})
+@SuppressWarnings("unchecked")
 public class PacketTransformer {
-	private static final Map<Class<? extends Packet<?>>, Method> methodCache = new HashMap<>();
+	@FunctionalInterface
+	private interface Rewrite<P> {
+		Packet<?> apply(P packet, ServerPlayer player);
+	}
+
+	private static final Map<Class<?>, Rewrite<Packet<?>>> REWRITES = new HashMap<>();
 
 	static Logger LOGGER = LogUtils.getLogger();
 
-	//Optimization to cache reflection requests.
-	static {
-		Method[] methods = PacketTransformer.class.getDeclaredMethods();
+	private static <P> void register(Class<P> type, Rewrite<P> rewrite) {
+		REWRITES.put(type, (packet, player) -> rewrite.apply(type.cast(packet), player));
+	}
 
-		for(Method method : methods) {
-			if(method.getName().equals("transformPacket")) {
-				Class<?>[] parameters = method.getParameterTypes();
-				if(parameters.length == 2) {
-					if(Packet.class.isAssignableFrom(parameters[0]) && parameters[1] == ServerPlayer.class) {
-						PacketTransformer.methodCache.put((Class<? extends Packet<?>>) parameters[0], method);
-					}
-				}
+	static {
+		register(ServerboundPlayerActionPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundBlockEntityTagQueryPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundInteractPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundMovePlayerPacket.Pos.class, PacketTransformer::transformPacket);
+		register(ServerboundMovePlayerPacket.PosRot.class, PacketTransformer::transformPacket);
+		register(ServerboundMoveVehiclePacket.class, PacketTransformer::transformPacket);
+		register(ServerboundJigsawGeneratePacket.class, PacketTransformer::transformPacket);
+		register(ServerboundSetCommandBlockPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundSetJigsawBlockPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundSetStructureBlockPacket.class, PacketTransformer::transformPacket);
+		register(ServerboundSignUpdatePacket.class, PacketTransformer::transformPacket);
+		register(ServerboundUseItemOnPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundLoginPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSetChunkCacheRadiusPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSetSimulationDistancePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSetChunkCacheCenterPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundLightUpdatePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundLevelChunkWithLightPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundDamageEventPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundChunksBiomesPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSoundPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundExplodePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundLevelParticlesPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundOpenSignEditorPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundBlockEventPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundForgetLevelChunkPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundBlockUpdatePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundBlockDestructionPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSectionBlocksUpdatePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundAddExperienceOrbPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundPlayerLookAtPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundLevelEventPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundPlayerPositionPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundBlockEntityDataPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundSetEntityDataPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundAddEntityPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundMoveVehiclePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundTeleportEntityPacket.class, PacketTransformer::transformPacket);
+		register(ClientboundBundlePacket.class, PacketTransformer::transformPacket);
+		register(ClientboundCustomPayloadPacket.class, PacketTransformer::transformPacket);
+
+		verifyEveryRewriteIsRegistered();
+	}
+
+	/**
+	 * A rewrite that is written but never registered would leave that packet untransformed, which
+	 * shows up as chunks or entities landing in the wrong place rather than as an error. Fail while
+	 * the class loads instead.
+	 */
+	private static void verifyEveryRewriteIsRegistered() {
+		List<String> unregistered = new ArrayList<>();
+		for (Method method : PacketTransformer.class.getDeclaredMethods()) {
+			if (!method.getName().equals("transformPacket")) {
+				continue;
 			}
+			Class<?>[] parameters = method.getParameterTypes();
+			if (parameters.length == 2 && Packet.class.isAssignableFrom(parameters[0])
+					&& parameters[1] == ServerPlayer.class && !REWRITES.containsKey(parameters[0])) {
+				unregistered.add(parameters[0].getSimpleName());
+			}
+		}
+		if (!unregistered.isEmpty()) {
+			throw new IllegalStateException("Planet World has packet rewrites that are never reached: " + unregistered);
 		}
 	}
 
 	/**
-	 * Uses reflection to determine which packet goes to which transformPacket method.
+	 * Rewrites a packet's positions for the receiving player, or returns it unchanged when no rewrite
+	 * is registered for its type.
 	 */
 	public static <T extends PacketListener> Packet<T> process(Packet<T> packet, ServerPlayer player){
-		Method transformedPacket = methodCache.get(packet.getClass());
-
-		//A method does not exist to handle the packet. Don't transform it
-		if(transformedPacket == null) {
+		Rewrite<Packet<?>> rewrite = REWRITES.get(packet.getClass());
+		if (rewrite == null) {
 			return packet;
 		}
-		try {
-			//Process the packet with its transformer method. TODO find a way to automatically register all the overrided transformPacket methods without the use of reflection. Reflection invoking is slow.
-			return (Packet<T>) transformedPacket.invoke(PacketTransformer.class, packet, player);
-		//This should never occur.
-		} catch (InvocationTargetException | IllegalAccessException e) {
-			LOGGER.error("{} couldn't be processed by the transformer!", packet.getClass().getSimpleName());
-			return packet;
-		}
+		return (Packet<T>) rewrite.apply(packet, player);
 	}
 
 	@FunctionalInterface

@@ -9,6 +9,7 @@ import com.planetworld.time.LocalTimeHandler;
 import com.planetworld.weather.LocalizedWeatherHandler;
 import com.planetworld.wrap.client.storage.TransformersStorage;
 import com.planetworld.wrap.compat.create.CreateCompatCheck;
+import com.planetworld.wrap.compat.sable.SableCompatCheck;
 import com.planetworld.wrap.core.DimensionTransformer;
 import com.planetworld.wrap.network.WrapSettingsConfigurationTask;
 import com.planetworld.wrap.network.packet.DimensionWrappingPayload;
@@ -48,6 +49,7 @@ public class PlanetWorld {
                     PlanetWorldConfig.PLANET_CIRCUMFERENCE.getAsInt()
             );
             CreateCompatCheck.verifyIfCreatePresent();
+            SableCompatCheck.verifyIfSablePresent();
         });
     }
 

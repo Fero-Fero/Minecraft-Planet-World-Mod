@@ -45,6 +45,15 @@ public abstract class TrainMixin {
 		return t.isWrapped() ? CreateWrapMath.unwrapDistanceSqr(t, from, to) : original.call(from, to);
 	}
 
+	@WrapOperation(
+			method = "distanceToLocationSqr",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/Vec3;distanceToSqr(Lnet/minecraft/world/phys/Vec3;)D")
+	)
+	private double planetworld$torusLocationCull(Vec3 from, Vec3 to, Operation<Double> original, Level level, Vec3 location) {
+		DimensionTransformer t = CreateWrapMath.transformer(level);
+		return t.isWrapped() ? CreateWrapMath.unwrapDistanceSqr(t, from, to) : original.call(from, to);
+	}
+
 	/**
 	 * The collision ray runs from this carriage's leading point to its trailing point. Rebasing the
 	 * far end onto the near one keeps the ray pointing along the carriage instead of the long way

@@ -5,6 +5,7 @@ build/
 !**/src/**/build/
 
 implementation-plans/*
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws
@@ -42,3 +43,6 @@ repo/
 
 ### Reference sources (not part of this mod's build) ###
 reference/
+
+### Scratch dirs for inspecting third-party jars ###
+.tmp-*/

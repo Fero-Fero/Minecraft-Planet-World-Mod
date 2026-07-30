@@ -22,13 +22,18 @@ public final class CreateCompatCheck {
 			"com.simibubi.create.content.trains.entity.CarriageContraptionEntity",
 			"com.simibubi.create.content.trains.entity.CarriageEntityHandler",
 			"com.simibubi.create.content.trains.entity.Train",
+			"com.simibubi.create.content.trains.entity.TrainMigration",
 			"com.simibubi.create.content.trains.entity.TravellingPoint",
 			"com.simibubi.create.content.trains.graph.TrackEdge",
+			"com.simibubi.create.content.trains.graph.TrackGraph",
+			"com.simibubi.create.content.trains.graph.TrackGraphHelper",
 			"com.simibubi.create.content.trains.graph.TrackNodeLocation",
 			"com.simibubi.create.content.trains.station.StationBlockEntity",
+			"com.simibubi.create.content.trains.track.BezierConnection$Runtime",
 			"com.simibubi.create.content.trains.track.ITrackBlock",
 			"com.simibubi.create.content.trains.track.TrackPlacement",
 			"com.simibubi.create.content.trains.track.TrackPropagator",
+			"com.simibubi.create.content.trains.track.TrackTargetingBlockItem",
 	};
 
 	private CreateCompatCheck() {

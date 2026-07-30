@@ -4,73 +4,81 @@
 
 package com.planetworld.wrap.mixin.entity.collisions;
 
-import com.planetworld.wrap.core.DimensionTransformer;
 import com.google.common.collect.Lists;
-import com.llamalad7.mixinextras.sugar.Local;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.EntityGetter;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
-@Mixin(EntityGetter.class)
+/**
+ * EntityGetter hooks that stay valid when Sable {@code @Overwrite}s {@code isUnobstructed}.
+ * <p>
+ * A {@code @Redirect} on that method fails mixin apply once Sable replaces the body. MixinExtras
+ * {@link WrapOperation} attaches to {@code Shapes.joinIsNotEmpty} inside whichever body remains
+ * (vanilla or Sable). Remap only when the two AABBs sit across a bound so Sable's sub-level-local
+ * tests are not disturbed.
+ */
+@Mixin(value = EntityGetter.class, priority = 2000)
 public interface EntityGetterMixin {
 	@Shadow List<? extends Player> players();
 
-	/**
-	 * Determines if two entity bounding boxes intersect. Modified to support wrapped worlds.
-	 */
-	@Redirect(method = "isUnobstructed", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/shapes/Shapes;joinIsNotEmpty(Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/BooleanOp;)Z"))
-	default boolean wrapAABB(VoxelShape shape1, VoxelShape shape2, BooleanOp resultOperator, @Local(argsOnly = true) @Nullable Entity entity) {
-		EntityGetter thiz = (EntityGetter) (Object) this;
-
-		if(this instanceof ServerLevel level) {
-			DimensionTransformer transformer = level.getTransformer();
-			VoxelShape result = Shapes.create(transformer.AABoundingBox.unwrap(shape1.bounds(), shape2.bounds()));
-
-			return Shapes.joinIsNotEmpty(shape1, result, resultOperator);
+	@WrapOperation(
+			method = "isUnobstructed",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/world/phys/shapes/Shapes;joinIsNotEmpty(Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/phys/shapes/BooleanOp;)Z"
+			)
+	)
+	default boolean planetworld$torusJoinIsNotEmpty(
+			VoxelShape shape,
+			VoxelShape other,
+			BooleanOp op,
+			Operation<Boolean> original
+	) {
+		EntityGetter self = (EntityGetter) (Object) this;
+		if (!(self instanceof ServerLevel level)) {
+			return original.call(shape, other, op);
+		}
+		DimensionTransformer transformer = level.getTransformer();
+		if (transformer == null || !transformer.isWrapped() || shape.isEmpty() || other.isEmpty()) {
+			return original.call(shape, other, op);
 		}
 
-		return Shapes.joinIsNotEmpty(shape1, shape2, resultOperator);
+		AABB ref = shape.bounds();
+		AABB candidate = other.bounds();
+		if (!planetworld$needsHorizontalUnwrap(transformer, ref, candidate)) {
+			return original.call(shape, other, op);
+		}
+
+		VoxelShape remapped = Shapes.create(transformer.AABoundingBox.unwrap(ref, candidate));
+		return original.call(shape, remapped, op);
 	}
 
-	/**
-	@Redirect(method = "getNearestPlayer(DDDDLjava/util/function/Predicate;)Lnet/minecraft/world/entity/player/Player;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;distanceToSqr(DDD)D"))
-	default double nearestPlayerDistanceWrap(Player player, double x, double y, double z) {
-		return wrapDistance(player, x, y, z);
-	}**/
-
-	/**
-	@Redirect(method = "hasNearbyAlivePlayer(DDDD)Z", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;distanceToSqr(DDD)D"))
-	default double hasNearbyAlivePlayerDistanceWrap(Player player, double x, double y, double z) {
-		return wrapDistance(player, x, y, z);
-	}**/
-
-	/**
-	@Redirect(method = "getNearestEntity(Ljava/util/List;Lnet/minecraft/world/entity/ai/targeting/TargetingConditions;Lnet/minecraft/world/entity/LivingEntity;DDD)Lnet/minecraft/world/entity/LivingEntity;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;distanceToSqr(DDD)D"))
-	default double nearestEntityDistanceWrap(LivingEntity livingEntity, double x, double y, double z) {
-		return wrapDistance(livingEntity, x, y, z);
-	}**/
+	private static boolean planetworld$needsHorizontalUnwrap(DimensionTransformer transformer, AABB ref, AABB other) {
+		return transformer.Coord.X.needsUnwrap(ref.minX, other.minX)
+				|| transformer.Coord.X.needsUnwrap(ref.maxX, other.maxX)
+				|| transformer.Coord.Z.needsUnwrap(ref.minZ, other.minZ)
+				|| transformer.Coord.Z.needsUnwrap(ref.maxZ, other.maxZ);
+	}
 
 	@Inject(method = "getNearbyPlayers", at = @At("HEAD"), cancellable = true)
 	default void includeWrappedPlayers(TargetingConditions predicate, LivingEntity target, AABB area, CallbackInfoReturnable<List<Player>> cir) {
-		List<Player> list = Lists.<Player>newArrayList();
+		List<Player> list = Lists.newArrayList();
 
 		for (Player player : this.players()) {
 			DimensionTransformer transformer = player.level().getTransformer();
@@ -80,10 +88,5 @@ public interface EntityGetterMixin {
 		}
 
 		cir.setReturnValue(list);
-	}
-
-	@Unique
-	private double wrapDistance(Entity entity, double x, double y, double z) {
-		return entity.level().getTransformer().SSO().Vector3D.sqrDistToBounds(entity.position(), new Vec3(x, y, z));
 	}
 }

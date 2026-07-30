@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.planetworld.wrap.compat.sable.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.planetworld.wrap.compat.sable.SableMixinPlugin",
+  "mixins": [
+    "ActiveSableCompanionMixin",
+    "SubLevelPhysicsSystemMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

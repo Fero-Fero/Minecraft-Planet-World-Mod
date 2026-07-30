@@ -22,6 +22,9 @@ config="${mod_id}-wrap.mixins.json"
 [[mixins]]
 config="${mod_id}-create.mixins.json"
 
+[[mixins]]
+config="${mod_id}-sable.mixins.json"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"
@@ -41,4 +44,22 @@ config="${mod_id}-create.mixins.json"
     type="optional"
     versionRange="[6.0.10,6.1.0)"
     ordering="NONE"
+    side="BOTH"
+
+# Sable owns sub-level and rigid-body geometry; Planet World composes with it rather than replacing it.
+# Load after Sable so the wrap hooks sit outside Sable's own sub-level math.
+[[dependencies.${mod_id}]]
+    modId="sable"
+    type="optional"
+    versionRange="[2.0.0,3.0.0)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Create Aeronautics ships Simulated / Aeronautics / Offroad in one jar and adds no geometry of its
+# own beyond Sable's, so it is declared only to pin the version this stack was tested against.
+[[dependencies.${mod_id}]]
+    modId="aeronautics_bundled"
+    type="optional"
+    versionRange="[1.3.0,)"
+    ordering="AFTER"
     side="BOTH"

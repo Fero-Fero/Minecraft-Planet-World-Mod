@@ -126,6 +126,19 @@ public class DimensionTransformer {
 			return wrap(new ChunkPos(ChunkPos.getX(chunkPos), ChunkPos.getZ(chunkPos)));
 		}
 
+		/**
+		 * Packed form of {@link #wrap(ChunkPos)} for the ticket and tracker paths, which key their
+		 * maps by {@code long}. Returns the argument itself when it already sits inside the domain,
+		 * so a position that needs no correction costs nothing and allocates nothing.
+		 */
+		public long wrapLong(long chunkPos) {
+			int x = ChunkPos.getX(chunkPos);
+			int z = ChunkPos.getZ(chunkPos);
+			int wrappedX = X.wrap(x);
+			int wrappedZ = Z.wrap(z);
+			return wrappedX == x && wrappedZ == z ? chunkPos : ChunkPos.asLong(wrappedX, wrappedZ);
+		}
+
 		@Override
 		public ChunkPos unwrap(ChunkPos refChunkPos, ChunkPos wrappedChunkPos) {
 			return new ChunkPos(X.unwrap(refChunkPos.x, wrappedChunkPos.x), Z.unwrap(refChunkPos.z, wrappedChunkPos.z));
