@@ -1,0 +1,33 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.planetworld.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "MobMixin",
+    "MonsterMixin",
+    "CropBlockMixin",
+    "DaylightDetectorBlockMixin",
+    "FireBlockMixin",
+    "SaplingBlockMixin",
+    "NoiseBasedChunkGeneratorMixin",
+    "ChunkGeneratorMixin",
+    "ChunkGeneratorStructureStateMixin",
+    "MultiNoiseBiomeSourceMixin",
+    "ConcentricRingsStructurePlacementMixin",
+    "RandomSpreadStructurePlacementMixin",
+    "RandomSpreadStructurePlacementAccessor",
+    "StructurePlacementAccessor",
+    "StructurePlacementMixin"
+  ],
+  "client": [
+    "client.LevelRendererMixin",
+    "client.ClientLevelMixin",
+    "client.EntityRenderDispatcherMixin",
+    "client.RainRenderGateMixin",
+    "client.ShaderInstanceMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

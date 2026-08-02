@@ -1,0 +1,17 @@
+{
+  "net/minecraft/world/level/Level": [
+    "com/planetworld/wrap/injected/DimensionTransformerInjector"
+  ],
+  "net/minecraft/server/level/ServerPlayer": [
+    "com/planetworld/wrap/injected/ServerPlayerInjector"
+  ],
+  "net/minecraft/server/level/ChunkTracker": [
+    "com/planetworld/wrap/injected/DimensionTransformerInjector"
+  ],
+  "net/minecraft/world/level/PathNavigationRegion": [
+    "com/planetworld/wrap/injected/DimensionTransformerInjector"
+  ],
+  "net/minecraft/server/level/WorldGenRegion": [
+    "com/planetworld/wrap/injected/DimensionTransformerInjector"
+  ]
+}

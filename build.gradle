@@ -1,0 +1,261 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.142'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+sourceSets.main.resources {
+    srcDir('src/generated/resources')
+    exclude("**/*.bbmodel")
+    exclude("src/generated/**/.cache")
+}
+
+repositories {
+    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
+    maven { url = "https://maven.ithundxr.dev/snapshots" } // Registrate
+}
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    // Compile-time duck interfaces on vanilla classes (implemented at runtime via mixins).
+    interfaceInjectionData.from "interfaces.json"
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Compile against Create for optional circumnavigation mixins; not required at runtime.
+    compileOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    compileOnly("com.tterrag.registrate:Registrate:${registrate_version}")
+
+    // Sable's `sable-companion` API only exists nested inside Sable's own jar and is published
+    // nowhere this build resolves from, so its classes do not resolve for javac even with the mod jar
+    // on the classpath — the Sable compat mixins reach Sable by name instead. `-Psable_jar=<path>`
+    // points at an extracted companion jar for anyone who wants compile-time types.
+    if (project.hasProperty('sable_jar')) {
+        compileOnly files(project.property('sable_jar'))
+    }
+
+    // `-PwithCreateRuntime` boots the dev runs with Create present, which is the only way to see the
+    // optional circumnavigation mixins actually apply.
+    if (project.hasProperty('withCreateRuntime')) {
+        localRuntime("com.simibubi.create:create-${minecraft_version}:${create_version}") {
+            // Create's POM also lists the mods it integrates with; none of them are needed to load it.
+            exclude group: 'mezz.jei'
+            exclude group: 'maven.modrinth'
+            exclude group: 'dev.ftb.mods'
+            exclude group: 'info.journeymap'
+            exclude group: 'top.theillusivec4.curios'
+            exclude group: 'cc.tweaked'
+            exclude group: 'dev.architectury'
+        }
+    }
+
+    // Sable / Aeronautics are not on a public Maven we consume. Copy jars from run/mods or a
+    // configured path into the runtime classpath the same way a player would drop them in mods/.
+    def runtimeModDir = file('run/mods')
+    def projectModsDir = file('mods')
+    if (project.hasProperty('withSableRuntime') || project.hasProperty('withAeronauticsRuntime')) {
+        def sources = [runtimeModDir, projectModsDir]
+        sources.each { dir ->
+            if (!dir.directory) {
+                return
+            }
+            dir.eachFileMatch(~/(?i).*sable.*\.jar/) { jar ->
+                if (project.hasProperty('withSableRuntime') || project.hasProperty('withAeronauticsRuntime')) {
+                    localRuntime files(jar)
+                }
+            }
+            if (project.hasProperty('withAeronauticsRuntime')) {
+                dir.eachFileMatch(~/(?i).*aeronautics.*\.jar/) { jar ->
+                    localRuntime files(jar)
+                }
+            }
+        }
+    }
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('verifyCreateWrapMath', JavaExec) {
+    group = 'verification'
+    description = 'Checks Create circumnavigation wrap-distance math without booting the game'
+    dependsOn(tasks.named('compileJava'))
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.planetworld.wrap.compat.create.CreateWrapMathSelfCheck'
+}
+
+/**
+ * An optional compat layer only works if the jar ships its mixin config, its support classes, and
+ * required injections, and if the mods.toml both registers the config and declares the soft dependency.
+ * Any one of those missing turns into silently absent wrapping instead of a failure, so check the
+ * built artifact rather than the sources.
+ */
+def registerCompatJarCheck(String taskName, String label, String configName, List<String> supportClasses, List<String> softDependencies) {
+    // Resolved here rather than at script scope: a script-level local is out of scope inside a method.
+    def jarTask = tasks.named('jar', Jar)
+    tasks.register(taskName) {
+        group = 'verification'
+        description = "Ensures the built jar contains ${label} optional mixin wiring"
+        dependsOn(jarTask)
+        def jarFile = jarTask.flatMap { it.archiveFile }
+        inputs.file(jarFile)
+        doLast {
+            def file = jarFile.get().asFile
+            def entries = new java.util.zip.ZipFile(file).withCloseable { zip ->
+                zip.entries().collect { it.name } as Set
+            }
+            def config = new java.util.zip.ZipFile(file).withCloseable { zip ->
+                def entry = zip.getEntry(configName)
+                if (entry == null) {
+                    throw new GradleException("Missing ${configName} in jar")
+                }
+                new groovy.json.JsonSlurper().parse(zip.getInputStream(entry))
+            }
+            def mixinPackage = config.package.replace('.', '/')
+            // Mixin names come from the config itself so a new mixin cannot be shipped unverified.
+            def required = supportClasses + config.mixins.collect { "${mixinPackage}/${it}.class".toString() }
+            def missing = required.findAll { !entries.contains(it) }
+            if (!missing.isEmpty()) {
+                throw new GradleException("${label} compat jar missing entries: ${missing}")
+            }
+            if (config.injectors?.defaultRequire != 1) {
+                throw new GradleException("${label} mixins must require their injections so a mismatched ${label} version fails loudly")
+            }
+            def toml = new java.util.zip.ZipFile(file).withCloseable { zip ->
+                def entry = zip.getEntry('META-INF/neoforge.mods.toml')
+                if (entry == null) {
+                    throw new GradleException('Missing META-INF/neoforge.mods.toml in jar')
+                }
+                zip.getInputStream(entry).text
+            }
+            if (!toml.contains(configName)) {
+                throw new GradleException("mods.toml does not register ${configName}")
+            }
+            softDependencies.each { modId ->
+                if (!(toml =~ /modId="${modId}"\s+type="optional"/)) {
+                    throw new GradleException("mods.toml missing optional ${modId} dependency")
+                }
+            }
+            logger.lifecycle("${label} compat jar OK: ${file.name}")
+        }
+    }
+}
+
+registerCompatJarCheck('verifyCreateCompatJar', 'Create', 'planetworld-create.mixins.json', [
+        'com/planetworld/wrap/compat/create/CreateMixinPlugin.class',
+        'com/planetworld/wrap/compat/create/CreateCompatCheck.class',
+        'com/planetworld/wrap/compat/create/CreateWrapMath.class',
+        'com/planetworld/wrap/compat/create/CreateTrackGraphSeam.class',
+], ['create'])
+
+registerCompatJarCheck('verifySableCompatJar', 'Sable', 'planetworld-sable.mixins.json', [
+        'com/planetworld/wrap/compat/sable/SableMixinPlugin.class',
+        'com/planetworld/wrap/compat/sable/SableCompatCheck.class',
+        'com/planetworld/wrap/compat/sable/SableWrapMath.class',
+], ['sable', 'aeronautics_bundled'])
+
+tasks.named('check') {
+    dependsOn('verifyCreateWrapMath', 'verifyCreateCompatJar', 'verifySableCompatJar')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

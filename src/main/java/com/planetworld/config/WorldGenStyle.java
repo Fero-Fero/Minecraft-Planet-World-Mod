@@ -1,0 +1,29 @@
+package com.planetworld.config;
+
+/**
+ * Overworld climate / biome layout chosen at world creation.
+ * CONTINENTAL is only valid when circumference &gt;= {@link PlanetSettings#MIN_CONTINENTAL_CIRCUMFERENCE}.
+ */
+public enum WorldGenStyle {
+    NORMAL,
+    CONTINENTAL;
+
+    public static WorldGenStyle fromName(String name) {
+        if (name == null || name.isBlank()) {
+            return NORMAL;
+        }
+        try {
+            return WorldGenStyle.valueOf(name.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return NORMAL;
+        }
+    }
+
+    public static WorldGenStyle fromOrdinalSafe(int ordinal) {
+        WorldGenStyle[] values = values();
+        if (ordinal < 0 || ordinal >= values.length) {
+            return NORMAL;
+        }
+        return values[ordinal];
+    }
+}

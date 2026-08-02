@@ -1,0 +1,32 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package com.planetworld.wrap.mixin.entity.entities;
+
+import com.planetworld.wrap.core.DimensionTransformer;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.projectile.FishingHook;
+import net.minecraft.world.phys.Vec3;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+@Mixin(FishingHook.class)
+public abstract class FishingHookMixin {
+	FishingHook thiz = (FishingHook) (Object) this;
+
+    // Fix knockback miscalculation
+    @WrapOperation(method = "pullEntity", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
+    public void wrapDelta(Entity instance, Vec3 deltaMovement, Operation<Void> original) {
+		Entity owner = thiz.getOwner();
+        DimensionTransformer transformer = instance.level().getTransformer().SSO();
+        double deltaX = transformer.Coord.X.deltaFromBounds(instance.getX(), owner.getX());
+        double deltaY = owner.getY() - instance.getY(); // Cant use y directly from deltaMovement since its scaled by vanilla
+        double deltaZ = transformer.Coord.Z.deltaFromBounds(instance.getZ(), owner.getZ());
+
+        Vec3 newDeltaMovement = new Vec3(deltaX, deltaY, deltaZ).scale(0.1);
+        original.call(instance, instance.getDeltaMovement().add(newDeltaMovement));
+    }
+}
