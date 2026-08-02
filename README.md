@@ -1,8 +1,8 @@
 # Planet World
 
-NeoForge **1.21.1** mod that turns the Overworld into a finite, seamlessly wrapped torus planet: walk east (or north) forever and come back to your own builds — rivers, rails, redstone, and arrows cross the world boundary as if it were anywhere else on the map. Plus localized time (the sun orbits the planet), localized weather, and curved horizon rendering.
+turn the Overworld into a finite, seamlessly wrapped torus planet, walking any direction forever will eventually lead back to where you were. The world has localized time (the sun orbits the planet), localized weather, and curved horizon rendering.
 
-**Standalone** — no runtime mod dependencies.
+**Standalone** — no mod dependencies.
 
 ## License and attribution
 
@@ -29,18 +29,13 @@ gradlew.bat build
 gradlew.bat check
 ```
 
-`check` includes `verifyCreateWrapMath`, `verifyCreateCompatJar`, and `verifySableCompatJar`.
-
-Jar output: `build/libs/planetworld-1.0.0.jar`
-
 ## Optional mod compatibility
 
 | Stack | Status | Notes |
 |-------|--------|--------|
-| **Create 6.0.10** | Soft dependency | Train circumnavigation + graph/signal substrate + schematicannon / display-link range. Newer 6.0.x: `CreateCompatCheck` fails loud at setup if internals moved. |
-| **Sable 2.0.x** | Soft dependency | Sub-level pose wrap + distance + broadcast projector + teleport trailer. |
-| **Create Aeronautics (bundled)** | Soft dependency | Same Sable substrate; vehicle acceptance still playtest. |
-| Citadel / GeckoLib | **Not used** | — |
+| **Create 6.0.10** | Soft dependency |
+| **Sable 2.0.x** | Soft dependency |
+| **Create Aeronautics (bundled)** | WIP |
 
 Dev runtime flags:
 
@@ -48,22 +43,6 @@ Dev runtime flags:
 gradlew.bat runServer -PwithCreateRuntime
 gradlew.bat runClient -PwithSableRuntime -PwithAeronauticsRuntime
 ```
-
-Sable/Aeronautics jars are copied from `mods/` or `run/mods/` (not Maven).
-
-### Changelog (compat)
-
-- Travel “rescue after blocked” **removed** — seam edges come from discovery / one-shot heal only.
-- Create G6–G7 code pass: End transformer guard, schematicannon + click-to-link torus range, heal session clear on stop.
-- Core: pathfinder wrap neighbours, LVT-named move deltas, Level clip short-path.
-
-## Run (dev)
-
-```bat
-gradlew.bat runClient
-gradlew.bat runServer
-```
-
 ## World type
 
 1. Create World → World Type → **Wrapped Planet**
