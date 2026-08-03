@@ -9,9 +9,9 @@ import net.minecraft.util.Mth;
 public final class ContinentalMountains {
 	private static final long SEED_A = 0xA0A0A0A01L;
 	private static final long SEED_B = 0xB0B0B0B02L;
-	/** Preferred latitude band: mild north spruce → temperate plains/forest. */
-	private static final double LAT_MIN = -0.48;
-	private static final double LAT_MAX = 0.18;
+	/** Preferred absolute latitude: temperate mid-bands on either hemisphere. */
+	private static final double ABS_LAT_MIN = 0.12;
+	private static final double ABS_LAT_MAX = 0.48;
 	/** Massif radius in blocks (wide foothills, one clear summit each). */
 	private static final double RADIUS_MIN = 220.0;
 	private static final double RADIUS_MAX = 340.0;
@@ -138,15 +138,18 @@ public final class ContinentalMountains {
 			double u = frac(mix(worldSeed, SEED_A, index * 17L + attempt));
 			double v = frac(mix(worldSeed, SEED_B, index * 31L + attempt * 3L));
 			double mx = (u - 0.5) * period;
-			double lat = LAT_MIN + v * (LAT_MAX - LAT_MIN);
-			double mz = lat * half;
+			double absLat = ABS_LAT_MIN + v * (ABS_LAT_MAX - ABS_LAT_MIN);
+			double sign = (mix(worldSeed, SEED_A, index + attempt) & 1L) == 0L ? 1.0 : -1.0;
+			double mz = sign * absLat * half;
 			if (ContinentalLandmask.landFactor(mx, mz, worldSeed) >= 0.5f) {
 				return new double[]{mx, mz};
 			}
 		}
 		double u = frac(mix(worldSeed, SEED_A, index));
 		double v = frac(mix(worldSeed, SEED_B, index + 99L));
-		return new double[]{(u - 0.5) * period, (LAT_MIN + v * (LAT_MAX - LAT_MIN)) * half};
+		double absLat = ABS_LAT_MIN + v * (ABS_LAT_MAX - ABS_LAT_MIN);
+		double sign = (mix(worldSeed, SEED_B, index) & 1L) == 0L ? 1.0 : -1.0;
+		return new double[]{(u - 0.5) * period, sign * absLat * half};
 	}
 
 	private static double torusDistance(double x, double z, double ox, double oz, double period) {

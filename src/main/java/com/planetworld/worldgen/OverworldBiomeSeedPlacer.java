@@ -202,9 +202,18 @@ public final class OverworldBiomeSeedPlacer {
 
 		float preference = climatePreference(key);
 		if (preference < -0.2f) {
-			cz = Mth.clamp(cz, -half * 0.95, -half * 0.25);
+			// Cold biomes at either pole (|lat| high) — both poles are cold now.
+			boolean southPole = ((h >>> 3) & 1L) == 0L;
+			double mag = half * (0.55 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.40);
+			cz = southPole ? mag : -mag;
 		} else if (preference > 0.2f) {
-			cz = Mth.clamp(cz, half * 0.25, half * 0.95);
+			// Warm / arid / tropical near the equator.
+			cz = Mth.clamp(cz, -half * 0.38, half * 0.38);
+			if (key == Biomes.DESERT || key == Biomes.BADLANDS || key == Biomes.WOODED_BADLANDS
+					|| key == Biomes.ERODED_BADLANDS || key == Biomes.SAVANNA || key == Biomes.SAVANNA_PLATEAU) {
+				double aridMag = half * (0.28 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.22);
+				cz = ((h >>> 5) & 1L) == 0L ? aridMag : -aridMag;
+			}
 		}
 
 		if (key == Biomes.MUSHROOM_FIELDS) {

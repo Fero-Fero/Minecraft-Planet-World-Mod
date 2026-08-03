@@ -71,3 +71,11 @@ config="${mod_id}-sable.mixins.json"
     versionRange="[2.5.0,)"
     ordering="AFTER"
     side="BOTH"
+
+# End Remastered: custom eyes locate vanilla strongholds; PW guarantees a land+plains portal site on Realism.
+[[dependencies.${mod_id}]]
+    modId="endrem"
+    type="optional"
+    versionRange="[6.0.0,)"
+    ordering="NONE"
+    side="BOTH"

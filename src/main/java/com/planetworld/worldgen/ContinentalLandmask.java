@@ -27,6 +27,7 @@ public final class ContinentalLandmask {
 
 	/**
 	 * @return land fraction in {@code [0,1]} with solid interiors and open oceans.
+	 * Near both Z-poles, land is strongly suppressed so oceans ring the cold caps.
 	 */
 	public static float landFactor(double blockX, double blockZ, long worldSeed) {
 		double period = ContinentalClimate.periodBlocks();
@@ -45,7 +46,16 @@ public final class ContinentalLandmask {
 				r * Math.cos(thetaZ)
 		);
 		float raw = coarse + LAND_BIAS;
-		return Mth.clamp(smoothstep(-0.28f, 0.18f, raw), 0.0f, 1.0f);
+		float land = Mth.clamp(smoothstep(-0.28f, 0.18f, raw), 0.0f, 1.0f);
+
+		// Polar ocean rings: |lat|→1 both poles (torus seam) become mostly water.
+		float absLat = (float) Math.abs(z / half);
+		float polar = Mth.clamp((absLat - 0.68f) / 0.30f, 0.0f, 1.0f);
+		polar = polar * polar * (3.0f - 2.0f * polar);
+		float polarNoise = OpenSimplex2S.noise2(worldSeed ^ SEED_MUSH, x / 160.0, z / 160.0);
+		float oceanPull = polar * (0.62f + 0.28f * polarNoise);
+		land *= Mth.clamp(1.0f - oceanPull, 0.0f, 1.0f);
+		return land;
 	}
 
 	/**

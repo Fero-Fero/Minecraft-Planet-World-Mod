@@ -26,10 +26,10 @@ public abstract class MobMixin {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level) || level.isClientSide) {
 			return original.call();
 		}
-		if (!LocalTime.isSunBurnTime(level, self.getX())) {
+		if (!LocalTime.isSunBurnTime(level, self.getX(), self.getZ())) {
 			return false;
 		}
-		float exposure = LocalTime.sunExposure(level, self.getX());
+		float exposure = LocalTime.sunExposure(level, self.getX(), self.getZ());
 		BlockPos eye = BlockPos.containing(self.getX(), self.getEyeY(), self.getZ());
 		boolean sheltered = self.isInWaterRainOrBubble() || self.isInPowderSnow || self.wasInPowderSnow;
 		return exposure > 0.5F

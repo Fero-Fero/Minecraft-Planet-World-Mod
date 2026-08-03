@@ -2,17 +2,24 @@ package com.planetworld.mixin.client;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.planetworld.render.CurvatureRenderer;
+import com.planetworld.render.LocalSkyHandler;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
+import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Enables curvature uniforms only while the world is drawing (not GUI/hotbar).
+ * Curvature scope for world draw, plus latitude sky tilt so the sun arcs toward
+ * the opposite pole as the player leaves the equator.
  */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
@@ -33,5 +40,27 @@ public abstract class LevelRendererMixin {
 		} finally {
 			CurvatureRenderer.endLevelRender();
 		}
+	}
+
+	@WrapOperation(
+			method = "renderSky",
+			at = @At(
+					value = "INVOKE",
+					target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionf;)V",
+					ordinal = 0
+			)
+	)
+	private void planetworld$tiltCelestialSphere(PoseStack poseStack, Quaternionf rotation, Operation<Void> original) {
+		original.call(poseStack, rotation);
+		float tilt = LocalSkyHandler.localCelestialTiltDegrees();
+		if (Math.abs(tilt) < 0.05f) {
+			return;
+		}
+		poseStack.mulPose(new Quaternionf(new AxisAngle4f(
+				(float) Math.toRadians(tilt),
+				1.0f,
+				0.0f,
+				0.0f
+		)));
 	}
 }

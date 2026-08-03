@@ -37,6 +37,8 @@ gradlew.bat check
 | **Sable 2.0.x** | Soft dependency |
 | **Create Aeronautics (bundled)** | WIP |
 | **Terralith 2.5+** | Soft dependency | Realism (≥2048): climate remap feeds Terralith biomes; sparse wrap-safe surface seeds. Fantasy/skylands toggleable in config. |
+| **End Remastered 6.x** | Soft dependency | Realism (≥2048): land-anchored plains stronghold so custom eyes can locate an End portal. |
+| Citadel / GeckoLib | **Not used** | — |
 
 Dev runtime flags:
 

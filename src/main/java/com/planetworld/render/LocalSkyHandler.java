@@ -10,7 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Drives client sky / lighting perception from the player's local time mapping.
+ * Drives client sky / lighting from the local player's longitude + latitude.
  */
 @OnlyIn(Dist.CLIENT)
 public final class LocalSkyHandler {
@@ -25,7 +25,19 @@ public final class LocalSkyHandler {
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
             return mc.level.getTimeOfDay(1.0f);
         }
-        return LocalTime.celestialAngle(mc.level, mc.player.getX());
+        return LocalTime.celestialAngle(mc.level, mc.player.getX(), mc.player.getZ());
+    }
+
+    /** Sky-sphere tilt so the sun arcs toward the opposite pole as you leave the equator. */
+    public static float localCelestialTiltDegrees() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return 0f;
+        }
+        if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
+            return 0f;
+        }
+        return LocalTime.celestialTiltDegrees(mc.level, mc.player.getZ());
     }
 
     @SubscribeEvent
@@ -38,7 +50,6 @@ public final class LocalSkyHandler {
             return;
         }
         float angle = localCelestialAngle();
-        // Darken fog slightly at local night
         boolean night = angle > 0.25f && angle < 0.75f;
         if (night) {
             event.setRed(event.getRed() * 0.35f);

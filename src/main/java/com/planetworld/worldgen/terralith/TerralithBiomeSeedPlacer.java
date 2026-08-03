@@ -158,20 +158,28 @@ public final class TerralithBiomeSeedPlacer {
 		for (int attempt = 0; attempt < 40; attempt++) {
 			long h = seed ^ ((long) index * 0x9E3779B97F4A7C15L) ^ (attempt * 0xC2B2AE3D27L);
 			double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
-			double latFrac = band.latMin + (((h >>> 25) & 0xFFFF) / 65535.0) * (band.latMax - band.latMin);
-			latFrac = Mth.clamp((float) latFrac, -0.98f, 0.98f);
-			double cz = latFrac * half;
+			double absLat = band.absLatMin
+					+ (((h >>> 25) & 0xFFFF) / 65535.0) * (band.absLatMax - band.absLatMin);
+			absLat = Mth.clamp((float) absLat, 0.0f, 0.98f);
+			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
+			double cz = sign * absLat * half;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 
 			float land = ContinentalLandmask.landFactor(cx, cz, worldSeed);
 			float score;
 			if (band == TerralithClimateBand.COASTAL) {
-				// Prefer thin land / shoreline
 				float target = 0.32f;
 				score = 1.0f - Math.abs(land - target);
 				if (land < 0.12f || land > 0.55f) {
 					score -= 0.5f;
+				}
+			} else if (band == TerralithClimateBand.POLAR) {
+				// Prefer coastal-ish land near poles (islands / polar shores).
+				float target = 0.28f;
+				score = 1.0f - Math.abs(land - target) * 0.8f;
+				if (land < 0.08f) {
+					score -= 0.35f;
 				}
 			} else {
 				if (land < band.minLand) {
@@ -184,7 +192,7 @@ public final class TerralithBiomeSeedPlacer {
 				bestScore = score;
 				bestX = cx;
 				bestZ = cz;
-				if (band == TerralithClimateBand.COASTAL) {
+				if (band == TerralithClimateBand.COASTAL || band == TerralithClimateBand.POLAR) {
 					if (score > 0.85f) {
 						break;
 					}

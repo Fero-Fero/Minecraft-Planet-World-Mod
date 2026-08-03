@@ -4,14 +4,16 @@ import com.planetworld.config.PlanetSettings;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
+import com.planetworld.wrap.processing.worldgen.OpenSimplex2S;
 import com.planetworld.wrap.storage.TransformerRequests;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.biome.Climate;
 
 /**
- * Continents-mode climate: large landmask oceans, Earth-like N/S temperature
- * (north = -Z cold, south = +Z tropical), soft blend at the Z wrap seam.
+ * Realism climate on a torus: both Z-poles are cold (seamless wrap), equator is warm,
+ * arid belts sit at mid-latitudes, and humidity uses smooth curves + noise so biomes
+ * blend instead of striping into hard bands.
  */
 public final class ContinentalClimate {
 	/**
@@ -20,14 +22,12 @@ public final class ContinentalClimate {
 	 */
 	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_REALISM_CIRCUMFERENCE;
 
-	/** How strongly signed latitude overrides vanilla temperature. */
-	private static final float TEMP_BLEND = 0.85f;
-	/** How strongly latitude humidity belts override vanilla humidity. */
-	private static final float HUMIDITY_BLEND = 0.7f;
+	/** Soft latitude pull — leave room for multi-noise variety. */
+	private static final float TEMP_BLEND = 0.72f;
+	private static final float HUMIDITY_BLEND = 0.48f;
 	/** Fully replace vanilla continentalness with the landmask for solid continents. */
 	private static final float LANDMASK_BLEND = 1.0f;
-	/** Only the outermost ~3% of each hemisphere blends across the Z wrap seam. */
-	private static final float SEAM_START = 0.97f;
+	private static final long HUMIDITY_NOISE_SEED = 0xA71D0001L;
 
 	private ContinentalClimate() {
 	}
@@ -51,6 +51,17 @@ public final class ContinentalClimate {
 		return shouldSeedBiomes();
 	}
 
+	/**
+	 * Signed latitude in {@code [-1, 1]}: {@code 0} = equator, {@code ±1} = poles (Z wrap seam).
+	 * Both poles are cold so the torus seam is continuous.
+	 */
+	public static double latitude(double blockZ) {
+		double period = periodBlocks();
+		double half = period * 0.5;
+		double z = wrapToSignedHalf(blockZ, period, half);
+		return z / half;
+	}
+
 	public static Climate.TargetPoint remap(Climate.TargetPoint point, double blockX, double blockZ) {
 		long worldSeed = worldSeedOrZero();
 		float temperature = Climate.unquantizeCoord(point.temperature());
@@ -62,31 +73,16 @@ public final class ContinentalClimate {
 
 		double period = periodBlocks();
 		double half = period * 0.5;
+		double x = wrapToSignedHalf(blockX, period, half);
 		double z = wrapToSignedHalf(blockZ, period, half);
-		double lat = z / half; // -1 north (-Z), +1 south (+Z)
-		float seam = seamBlend(Math.abs(lat));
+		double lat = z / half; // -1 / +1 = poles (both cold), 0 = equator (hot)
 
-		float climateTemp = (float) (lat * 0.95);
-		climateTemp = Mth.lerp(seam, climateTemp, 0.0f);
+		// Earth-like on a torus: cos(π·lat) → +1 equator, −1 both poles (seamless at wrap).
+		float climateTemp = (float) (Math.cos(Math.PI * lat) * 0.95);
 		temperature = Mth.clamp(Mth.lerp(TEMP_BLEND, temperature, climateTemp), -1.0f, 1.0f);
 
-		// Latitude humidity belts so 2048 still gets desert/savanna/jungle naturally:
-		// deep south wet (jungle), mid-south arid (desert/savanna), north colder/damper.
-		float humidityTarget;
-		if (lat > 0.55) {
-			humidityTarget = 0.48f; // wet tropics without bamboo-jungle dominance
-		} else if (lat > 0.18) {
-			humidityTarget = -0.7f;
-		} else if (lat < -0.55) {
-			humidityTarget = 0.15f;
-		} else {
-			humidityTarget = 0.05f;
-		}
-		double x = wrapToSignedHalf(blockX, period, half);
-		float lonWander = (float) Math.sin((x / half) * Math.PI) * 0.18f;
-		humidityTarget = Mth.clamp(humidityTarget + lonWander, -1.0f, 1.0f);
-		float humBlend = HUMIDITY_BLEND * (1.0f - seam * 0.5f);
-		humidity = Mth.clamp(Mth.lerp(humBlend, humidity, humidityTarget), -1.0f, 1.0f);
+		float humidityTarget = smoothHumidityTarget(lat, x, z, half, worldSeed);
+		humidity = Mth.clamp(Mth.lerp(HUMIDITY_BLEND, humidity, humidityTarget), -1.0f, 1.0f);
 
 		float land = ContinentalLandmask.landFactor(blockX, blockZ, worldSeed);
 		float mountain = ContinentalMountains.mountainFactor(blockX, blockZ, worldSeed, land);
@@ -110,9 +106,26 @@ public final class ContinentalClimate {
 		return Climate.target(temperature, humidity, continentalness, erosion, depth, weirdness);
 	}
 
-	private static float seamBlend(double absLat) {
-		double t = Mth.clamp((absLat - SEAM_START) / (1.0 - SEAM_START), 0.0, 1.0);
-		return (float) (t * t * (3.0 - 2.0 * t));
+	/**
+	 * Continuous humidity: wet tropics near equator, arid mid-latitudes, mild poles,
+	 * plus low-frequency noise so belts are mottled rather than striped.
+	 */
+	private static float smoothHumidityTarget(double lat, double x, double z, double half, long worldSeed) {
+		float absLat = (float) Math.abs(lat);
+		float tropicWet = gaussian(absLat, 0.0f, 0.28f);
+		float aridBelt = gaussian(absLat, 0.40f, 0.16f);
+		float polarDamp = gaussian(absLat, 0.92f, 0.22f);
+		float target = tropicWet * 0.50f - aridBelt * 0.78f + polarDamp * 0.12f;
+
+		float lonWander = (float) Math.sin((x / half) * Math.PI) * 0.14f;
+		float noise = OpenSimplex2S.noise2(worldSeed ^ HUMIDITY_NOISE_SEED, x / 320.0, z / 320.0) * 0.32f;
+		float detail = OpenSimplex2S.noise2(worldSeed ^ (HUMIDITY_NOISE_SEED + 17), x / 110.0, z / 110.0) * 0.14f;
+		return Mth.clamp(target + lonWander + noise + detail, -1.0f, 1.0f);
+	}
+
+	private static float gaussian(float x, float mean, float sigma) {
+		float d = (x - mean) / sigma;
+		return (float) Math.exp(-0.5f * d * d);
 	}
 
 	public static double periodBlocks() {

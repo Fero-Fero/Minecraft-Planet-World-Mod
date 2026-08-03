@@ -168,35 +168,35 @@ public final class GuaranteedStructures {
 		addForced(bySalt, WOODLAND_MANSION_SALT, mansion, usedChunks);
 		addBiome(biomeAnchors, biomes, Biomes.DARK_FOREST, dark[0], dark[1], BIOME_PATCH_RADIUS);
 
-		addVillage(worldSeed, 0, Biomes.PLAINS, 0.0, bySalt, biomeAnchors, biomes, usedChunks, period, half);
-		addVillage(worldSeed, 1, Biomes.DESERT, 0.45, bySalt, biomeAnchors, biomes, usedChunks, period, half);
-		addVillage(worldSeed, 2, Biomes.SAVANNA, 0.28, bySalt, biomeAnchors, biomes, usedChunks, period, half);
-		addVillage(worldSeed, 3, Biomes.SNOWY_PLAINS, -0.7, bySalt, biomeAnchors, biomes, usedChunks, period, half);
-		addVillage(worldSeed, 4, Biomes.TAIGA, -0.4, bySalt, biomeAnchors, biomes, usedChunks, period, half);
+		addVillage(worldSeed, 0, Biomes.PLAINS, 0.0, 0.18, bySalt, biomeAnchors, biomes, usedChunks, period, half);
+		addVillage(worldSeed, 1, Biomes.DESERT, 0.32, 0.52, bySalt, biomeAnchors, biomes, usedChunks, period, half);
+		addVillage(worldSeed, 2, Biomes.SAVANNA, 0.22, 0.42, bySalt, biomeAnchors, biomes, usedChunks, period, half);
+		addVillage(worldSeed, 3, Biomes.SNOWY_PLAINS, 0.68, 0.92, bySalt, biomeAnchors, biomes, usedChunks, period, half);
+		addVillage(worldSeed, 4, Biomes.TAIGA, 0.42, 0.70, bySalt, biomeAnchors, biomes, usedChunks, period, half);
 
 		for (int i = 0; i < OUTPOST_COUNT; i++) {
-			double[] pos = findLand(worldSeed, 0x0A070000L + i * 17L, -0.25, 0.25, period, half, usedChunks);
+			double[] pos = findLandAbs(worldSeed, 0x0A070000L + i * 17L, 0.0, 0.35, period, half, usedChunks);
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			addForced(bySalt, PILLAGER_OUTPOST_SALT, chunk, usedChunks);
 			addBiome(biomeAnchors, biomes, Biomes.PLAINS, pos[0], pos[1], BIOME_PATCH_RADIUS);
 		}
 
 		for (int i = 0; i < DESERT_TEMPLE_COUNT; i++) {
-			double[] pos = findLand(worldSeed, 0xDE5E0000L + i * 19L, 0.25, 0.75, period, half, usedChunks);
+			double[] pos = findLandAbs(worldSeed, 0xDE5E0000L + i * 19L, 0.28, 0.55, period, half, usedChunks);
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			addForced(bySalt, DESERT_PYRAMID_SALT, chunk, usedChunks);
 			addBiome(biomeAnchors, biomes, Biomes.DESERT, pos[0], pos[1], BIOME_PATCH_RADIUS);
 		}
 
 		for (int i = 0; i < JUNGLE_TEMPLE_COUNT; i++) {
-			double[] pos = findLand(worldSeed, 0x1061E000L + i * 23L, 0.45, 0.95, period, half, usedChunks);
+			double[] pos = findLandAbs(worldSeed, 0x1061E000L + i * 23L, 0.0, 0.28, period, half, usedChunks);
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			addForced(bySalt, JUNGLE_PYRAMID_SALT, chunk, usedChunks);
 			addBiome(biomeAnchors, biomes, Biomes.JUNGLE, pos[0], pos[1], BIOME_PATCH_RADIUS);
 		}
 
 		for (int i = 0; i < OCEAN_MONUMENT_COUNT; i++) {
-			double[] pos = findOcean(worldSeed, 0x40CEA000L + i * 29L, -0.35, 0.35, period, half, usedChunks);
+			double[] pos = findOceanAbs(worldSeed, 0x40CEA000L + i * 29L, 0.0, 0.40, period, half, usedChunks);
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			addForced(bySalt, OCEAN_MONUMENT_SALT, chunk, usedChunks);
 			addBiome(biomeAnchors, biomes, Biomes.DEEP_OCEAN, pos[0], pos[1], MONUMENT_BIOME_RADIUS);
@@ -204,15 +204,17 @@ public final class GuaranteedStructures {
 
 		Set<Long> dungeonChunks = new HashSet<>();
 		for (int i = 0; i < DUNGEON_COUNT; i++) {
-			double[] pos = findLand(worldSeed, 0xD0116E00L + i * 37L, -0.55, 0.55, period, half, usedChunks);
+			double[] pos = findLandAbs(worldSeed, 0xD0116E00L + i * 37L, 0.0, 0.55, period, half, usedChunks);
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			usedChunks.add(chunk.toLong());
 			dungeonChunks.add(chunk.toLong());
 		}
 
-		double[] sh = findLand(worldSeed, 0x5700A60DL, -0.2, 0.2, period, half, usedChunks);
+		// Land + plains biome so End Remastered / vanilla eyes can locate a real stronghold.
+		double[] sh = findLandAbs(worldSeed, 0x5700A60DL, 0.0, 0.28, period, half, usedChunks);
 		ChunkPos stronghold = toChunk(sh[0], sh[1]);
 		usedChunks.add(stronghold.toLong());
+		addBiome(biomeAnchors, biomes, Biomes.PLAINS, sh[0], sh[1], BIOME_PATCH_RADIUS);
 
 		Set<Long> fortressChunks = new HashSet<>();
 		Set<Long> bastionChunks = new HashSet<>();
@@ -241,7 +243,8 @@ public final class GuaranteedStructures {
 			long worldSeed,
 			int index,
 			ResourceKey<Biome> biome,
-			double latBias,
+			double absLatMin,
+			double absLatMax,
 			Map<Integer, Set<Long>> bySalt,
 			List<BiomeAnchor> biomeAnchors,
 			@Nullable HolderLookup.RegistryLookup<Biome> biomes,
@@ -249,9 +252,7 @@ public final class GuaranteedStructures {
 			double period,
 			double half
 	) {
-		double latMin = latBias - 0.15;
-		double latMax = latBias + 0.15;
-		double[] pos = findLand(worldSeed, 0xA111A6E0L + index * 31L, latMin, latMax, period, half, usedChunks);
+		double[] pos = findLandAbs(worldSeed, 0xA111A6E0L + index * 31L, absLatMin, absLatMax, period, half, usedChunks);
 		ChunkPos chunk = toChunk(pos[0], pos[1]);
 		addForced(bySalt, VILLAGE_SALT, chunk, usedChunks);
 		addBiome(biomeAnchors, biomes, biome, pos[0], pos[1], BIOME_PATCH_RADIUS);
@@ -311,6 +312,43 @@ public final class GuaranteedStructures {
 		return best;
 	}
 
+	/** Sample land in absolute-latitude bands, randomly on either hemisphere. */
+	private static double[] findLandAbs(
+			long worldSeed,
+			long salt,
+			double absLatMin,
+			double absLatMax,
+			double period,
+			double half,
+			Set<Long> usedChunks
+	) {
+		double[] best = new double[]{0.0, absLatMin * half};
+		float bestLand = -1.0f;
+		for (int attempt = 0; attempt < 64; attempt++) {
+			long h = mix(worldSeed, salt, attempt);
+			double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
+			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
+			double absLat = absLatMin + t * (absLatMax - absLatMin);
+			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
+			double cz = sign * absLat * half;
+			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
+			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
+			ChunkPos chunk = toChunk(cx, cz);
+			if (usedChunks.contains(chunk.toLong())) {
+				continue;
+			}
+			float land = ContinentalLandmask.landFactor(cx, cz, worldSeed);
+			if (land > bestLand) {
+				bestLand = land;
+				best = new double[]{cx, cz};
+				if (land >= 0.55f) {
+					return best;
+				}
+			}
+		}
+		return best;
+	}
+
 	private static double[] findOcean(
 			long worldSeed,
 			long salt,
@@ -328,6 +366,42 @@ public final class GuaranteedStructures {
 			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
 			double lat = latMin + t * (latMax - latMin);
 			double cz = lat * half;
+			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
+			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
+			ChunkPos chunk = toChunk(cx, cz);
+			if (usedChunks.contains(chunk.toLong())) {
+				continue;
+			}
+			float land = ContinentalLandmask.landFactor(cx, cz, worldSeed);
+			if (land < bestOcean) {
+				bestOcean = land;
+				best = new double[]{cx, cz};
+				if (land <= 0.12f) {
+					return best;
+				}
+			}
+		}
+		return best;
+	}
+
+	private static double[] findOceanAbs(
+			long worldSeed,
+			long salt,
+			double absLatMin,
+			double absLatMax,
+			double period,
+			double half,
+			Set<Long> usedChunks
+	) {
+		double[] best = new double[]{0.0, absLatMin * half};
+		float bestOcean = 2.0f;
+		for (int attempt = 0; attempt < 64; attempt++) {
+			long h = mix(worldSeed, salt, attempt);
+			double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
+			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
+			double absLat = absLatMin + t * (absLatMax - absLatMin);
+			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
+			double cz = sign * absLat * half;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 			ChunkPos chunk = toChunk(cx, cz);
