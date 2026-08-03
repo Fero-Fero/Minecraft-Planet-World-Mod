@@ -88,21 +88,21 @@ config="${mod_id}-sable.mixins.json"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
-    modId="lithosphere"
+    modId="mr_lithosphere"
     type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
-    modId="still_life"
+    modId="mr_still_life"
     type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
-    modId="blooming_biosphere"
+    modId="mr_blooming_biosphere"
     type="optional"
     versionRange="*"
     ordering="NONE"

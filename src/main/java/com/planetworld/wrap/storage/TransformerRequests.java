@@ -69,5 +69,8 @@ public class TransformerRequests {
 		com.planetworld.worldgen.OverworldBiomeSeedPlacer.clearCache();
 		com.planetworld.worldgen.terralith.TerralithBiomeSeedPlacer.clearCache();
 		com.planetworld.worldgen.GuaranteedStructures.clearCache();
+		com.planetworld.worldgen.RealismBiomeSources.clearCache();
+		com.planetworld.worldgen.ContinentalLandmask.clearCache();
+		com.planetworld.worldgen.ContinentalMountains.clearCache();
 	}
 }

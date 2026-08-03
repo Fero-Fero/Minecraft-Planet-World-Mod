@@ -14,12 +14,14 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.dimension.DimensionType;
 
 /**
- * Spatial time authority:
+ * Spatial time / sky authority for a globe-like wrapped Overworld:
  * <ul>
- *   <li>Longitude (X): phase of the day — walk east/west to change local time of day.</li>
- *   <li>Latitude (Z): sun altitude — both poles approach eternal night; equator has a full day cycle.</li>
+ *   <li>Longitude (X): phase of the day — walk east/west to change local solar time.</li>
+ *   <li>Latitude (Z): tips the celestial sphere so the sun’s equatorial orbit rises toward the
+ *       horizon at the poles (Minecraft: {@code +Z} south, {@code -Z} north).</li>
+ *   <li>Season: pole tip swings 70–80°; equator gets ±{@link SeasonAuthority#MAX_AXIAL_TILT_DEGREES}° lean.</li>
  * </ul>
- * Each client uses the local player's position, so different players see different suns.
+ * Each client uses the local player’s position, so different players see different suns.
  * <p>
  * Chunk sky-light is still global, so sun-burn and monster spawn must use these helpers
  * instead of {@code Level.isDay()} / {@code LightLayer.SKY} alone.
@@ -29,6 +31,23 @@ public final class LocalTime {
 
 	/** Light level vanilla requires for crops and saplings to advance. */
 	private static final int GROWTH_LIGHT_LEVEL = 9;
+
+	/**
+	 * Base tip at the poles before seasonal adjust. N-pole summer → 70°, winter → 80°
+	 * via {@code tip = 75 - northernWarmth * 5}.
+	 */
+	public static final float POLE_TIP_BASE_DEGREES = 75.0f;
+	/** Seasonal swing of pole tip magnitude (degrees). */
+	public static final float POLE_TIP_SEASON_SWING = 5.0f;
+
+	/** @deprecated use {@link #POLE_TIP_BASE_DEGREES}; kept for call-site clarity. */
+	@Deprecated
+	public static final float LATITUDE_TILT_DEGREES = POLE_TIP_BASE_DEGREES;
+
+	/** Blend gameplay day/night from longitude toward seasonal polar day above this |lat|. */
+	private static final float POLAR_EXPOSURE_START = 0.55f;
+	/** Stronger day/night length dilation above this |lat|. */
+	private static final float POLAR_DILATION_START = 0.70f;
 
 	private LocalTime() {
 	}
@@ -53,19 +72,15 @@ public final class LocalTime {
 	}
 
 	/**
-	 * 1 at the equator (adjusted by seasonal axial tilt), ~0 at the winter pole.
+	 * How “equatorial” day/night still applies (1 at equator → 0 at poles).
+	 * Poles use seasonal elevation instead of locking the sun underfoot/overhead.
 	 */
 	public static float latitudeDayFactor(Level level, double z) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 1.0f;
 		}
 		double lat = SeasonAuthority.latitude(level, z);
-		float base = Mth.clamp((float) Math.cos(lat * Math.PI * 0.5), 0.0f, 1.0f);
-		float bias = SeasonAuthority.axialDayBias(level);
-		// Shift effective latitude toward the summer pole
-		double shifted = Mth.clamp(lat - bias, -1.0, 1.0);
-		float seasonal = Mth.clamp((float) Math.cos(shifted * Math.PI * 0.5), 0.0f, 1.0f);
-		return Mth.clamp(base * 0.35f + seasonal * 0.65f, 0.0f, 1.0f);
+		return Mth.clamp((float) Math.cos(lat * Math.PI * 0.5), 0.0f, 1.0f);
 	}
 
 	/** Prefer the live dimension transformer period so C=256 worlds don't use a stale config width. */
@@ -77,35 +92,12 @@ public final class LocalTime {
 		return PlanetWorldConfig.planetCircumference() * 2.0;
 	}
 
-	private static double periodBlocksZ(Level level) {
-		DimensionTransformer t = level.getTransformer();
-		if (t != null && t.isWrapped()) {
-			return t.Coord.Z.domainLength;
-		}
-		return PlanetWorldConfig.planetCircumference() * 2.0;
-	}
-
 	private static double wrapX(Level level, double x) {
 		DimensionTransformer t = level.getTransformer();
 		if (t != null && t.isWrapped()) {
 			return t.Coord.X.wrap(x);
 		}
 		return WrapMath.wrapX(x);
-	}
-
-	private static double wrapZ(Level level, double z) {
-		DimensionTransformer t = level.getTransformer();
-		if (t != null && t.isWrapped()) {
-			return t.Coord.Z.wrap(z);
-		}
-		// Same square-torus period as X when no live transformer.
-		double width = PlanetWorldConfig.planetCircumference() * 2.0;
-		double half = width / 2.0;
-		z = ((z + half) % width + width) % width - half;
-		if (z >= half) {
-			z -= width;
-		}
-		return z;
 	}
 
 	public static boolean isDay(Level level, double x, double z) {
@@ -134,16 +126,51 @@ public final class LocalTime {
 	}
 
 	/**
-	 * 0..1 sun strength at (x, z). Longitude sets phase; latitude scales altitude
-	 * so poles stay near-dark.
+	 * 0..1 sun strength. Equator: longitude phase. Poles: seasonal path above/below horizon
+	 * (summer pole stays lit, winter pole stays dark) while the disc still circles visually.
+	 * Near poles, day/night length is dilated so local winter nights last longer.
 	 */
 	public static float sunExposure(Level level, double x, double z) {
-		double brightness = Mth.clamp(
-				Math.cos(celestialAngle(level, x, z) * Math.PI * 2.0) * 2.0 + 0.5,
-				0.0,
-				1.0
-		);
-		return (float) brightness;
+		float equatorial = equatorialSunBrightness(level, x);
+		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
+			return equatorial;
+		}
+		double lat = SeasonAuthority.latitude(level, z);
+		float absLat = (float) Math.abs(lat);
+		float warmth = SeasonAuthority.localWarmth(level, z);
+
+		float dilateBlend = Mth.clamp((absLat - POLAR_DILATION_START) / (1.0f - POLAR_DILATION_START), 0.0f, 1.0f);
+		if (dilateBlend > 0.0f) {
+			equatorial = dilateDayNight(equatorial, warmth, dilateBlend);
+		}
+
+		float polarBlend = Mth.clamp((absLat - POLAR_EXPOSURE_START) / (1.0f - POLAR_EXPOSURE_START), 0.0f, 1.0f);
+		if (polarBlend <= 0.0f) {
+			return equatorial;
+		}
+		float polar = Mth.clamp(0.5f + warmth * 0.65f, 0.0f, 1.0f);
+		return Mth.lerp(polarBlend, equatorial, polar);
+	}
+
+	/**
+	 * Stretch local winter nights / summer days near the poles without stopping the orbit.
+	 * Winter ({@code warmth < 0}): darken more of the day curve. Summer: brighten more.
+	 */
+	private static float dilateDayNight(float brightness, float warmth, float blend) {
+		float strength = blend * Math.abs(warmth);
+		if (strength < 0.01f) {
+			return brightness;
+		}
+		double exponent = 1.0 + strength * 1.6;
+		if (warmth < 0.0f) {
+			return (float) Math.pow(brightness, exponent);
+		}
+		return 1.0f - (float) Math.pow(1.0 - brightness, exponent);
+	}
+
+	private static float equatorialSunBrightness(Level level, double x) {
+		float angle = celestialAngleFromTicks(localTime(level, x));
+		return (float) Mth.clamp(Math.cos(angle * Math.PI * 2.0) * 2.0 + 0.5, 0.0, 1.0);
 	}
 
 	public static float sunExposure(Level level, double x) {
@@ -215,35 +242,42 @@ public final class LocalTime {
 		return level.getBrightness(LightLayer.BLOCK, lightPos) < GROWTH_LIGHT_LEVEL;
 	}
 
-	/** Celestial angle 0..1 for sky rendering at longitude {@code x} (equator day factor). */
+	/** Celestial angle 0..1 for sky rendering at longitude {@code x}. */
 	public static float celestialAngle(Level level, double x) {
 		return celestialAngle(level, x, 0.0);
 	}
 
 	/**
-	 * Celestial angle at (x, z). Longitude drives the day clock; latitude pulls the sun
-	 * toward midnight so poles approach eternal night. Per-player via the viewing position.
+	 * Celestial angle at (x, z). Longitude drives the day clock everywhere — including poles —
+	 * so the sun <em>circles</em> the horizon instead of freezing at midnight (moon overhead).
+	 * Observer latitude is applied as a sky-sphere tilt; seasons as ±10° axial lean.
 	 */
 	public static float celestialAngle(Level level, double x, double z) {
-		float base = celestialAngleFromTicks(localTime(level, x));
-		float dayFactor = latitudeDayFactor(level, z);
-		// Square softens mid-latitudes; poles (dayFactor→0) lock near midnight (0.5).
-		float towardNight = 1.0f - dayFactor * dayFactor;
-		return Mth.lerp(towardNight, base, 0.5f);
+		return celestialAngleFromTicks(localTime(level, x));
 	}
 
 	/**
-	 * Degrees to tilt the celestial sphere toward the opposite pole from latitude,
-	 * plus a gentle seasonal axial tilt (±{@link SeasonAuthority#MAX_AXIAL_TILT_DEGREES}):
-	 * midsummer nudges the sun north, midwinter south — continuous, no snaps.
+	 * Degrees to tip the celestial sphere for the viewer’s latitude + season.
+	 * Applied around sky pose-stack <em>Z</em> after {@code YP(-90)} and before {@code XP(time)}
+	 * (see {@code LevelRendererMixin}) so the sun keeps circling a tipped axis.
+	 * <ul>
+	 *   <li>{@code lat = 0}: E–W overhead arc; ±10° equatorial seasonal lean only.</li>
+	 *   <li>{@code lat = -1} (north pole): summer → 70°, winter → 80° tip.</li>
+	 *   <li>{@code lat = +1} (south pole): mirrored via latitude sign.</li>
+	 * </ul>
+	 * Formula: {@code latTip = -lat * (75 - northernWarmth * 5)} plus
+	 * {@code northernWarmth * 10 * (1 - |lat|)} equator lean.
 	 */
 	public static float celestialTiltDegrees(Level level, double z) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 0.0f;
 		}
 		double lat = SeasonAuthority.latitude(level, z);
-		float seasonal = SeasonAuthority.northernAxialTiltDegrees(level);
-		return (float) (-lat * 72.0) + seasonal;
+		float warmth = SeasonAuthority.northernWarmth(level);
+		float poleMagnitude = POLE_TIP_BASE_DEGREES - warmth * POLE_TIP_SEASON_SWING;
+		float latTip = (float) (-lat * poleMagnitude);
+		float equatorLean = warmth * SeasonAuthority.MAX_AXIAL_TILT_DEGREES * (1.0f - (float) Math.abs(lat));
+		return latTip + equatorLean;
 	}
 
 	private static float celestialAngleFromTicks(long t) {

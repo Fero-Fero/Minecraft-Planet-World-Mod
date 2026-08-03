@@ -22,6 +22,10 @@ public final class ContinentalMountains {
 	private ContinentalMountains() {
 	}
 
+	public static void clearCache() {
+		cache = null;
+	}
+
 	/**
 	 * @return {@code 0..1} mountain influence (1 at summit cores).
 	 */

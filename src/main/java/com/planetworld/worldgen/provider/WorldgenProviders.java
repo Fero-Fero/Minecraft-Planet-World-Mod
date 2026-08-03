@@ -6,7 +6,6 @@ import java.util.Optional;
 
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.config.WorldgenPackChoice;
-import com.planetworld.worldgen.terralith.TerralithCompat;
 
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 
@@ -34,10 +33,7 @@ public final class WorldgenProviders {
 	}
 
 	public static boolean isRemappableOverworldSource(MultiNoiseBiomeSource source) {
-		if (TerralithCompat.isRemappableOverworldSource(source)) {
-			return true;
-		}
-		return active().map(p -> p.isRemappableOverworldSource(source)).orElse(false);
+		return com.planetworld.worldgen.RealismBiomeSources.isRemappableOverworldSource(source);
 	}
 
 	public static List<WorldgenPackChoice> availableChoices() {

@@ -40,17 +40,22 @@ public final class LocalSkyHandler {
         return LocalTime.celestialTiltDegrees(mc.level, mc.player.getZ());
     }
 
-    /** Sun disc scale ~0.90 winter … ~1.10 summer (subtle). */
-    public static float localSunScale() {
+    /** Sun disc scale from global northern calendar (~0.92 winter … ~1.08 summer). */
+    public static float seasonSunScale() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) {
+        if (mc.level == null) {
             return 1f;
         }
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
             return 1f;
         }
-        float warmth = SeasonAuthority.localWarmth(mc.level, mc.player.getZ());
-        return 1.0f + warmth * 0.08f;
+        return 1.0f + SeasonAuthority.northernWarmth(mc.level) * 0.08f;
+    }
+
+    /** @deprecated use {@link #seasonSunScale()} — size is season-global, not local. */
+    @Deprecated
+    public static float localSunScale() {
+        return seasonSunScale();
     }
 
     @SubscribeEvent

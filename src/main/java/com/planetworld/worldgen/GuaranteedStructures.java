@@ -128,6 +128,10 @@ public final class GuaranteedStructures {
 			return null;
 		}
 		AnchorCache layout = layout(level.getSeed());
+		List<BiomeAnchor> anchors = layout.biomeAnchors;
+		if (anchors.isEmpty()) {
+			return null;
+		}
 		double period = ContinentalClimate.periodBlocks();
 		double half = period * 0.5;
 		double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
@@ -135,7 +139,9 @@ public final class GuaranteedStructures {
 
 		Holder<Biome> best = null;
 		double bestDist = Double.MAX_VALUE;
-		for (BiomeAnchor anchor : layout.biomeAnchors) {
+		int n = anchors.size();
+		for (int i = 0; i < n; i++) {
+			BiomeAnchor anchor = anchors.get(i);
 			double dx = Math.abs(x - anchor.x);
 			double dz = Math.abs(z - anchor.z);
 			dx = Math.min(dx, period - dx);
@@ -151,23 +157,43 @@ public final class GuaranteedStructures {
 	}
 
 	private static AnchorCache layout(long worldSeed) {
+		double period = ContinentalClimate.periodBlocks();
 		AnchorCache local = cache;
-		if (local != null && local.seed == worldSeed) {
-			if (!local.biomeAnchors.isEmpty() || biomeLookup() == null) {
-				return local;
-			}
+		if (local != null && local.seed == worldSeed && Double.compare(local.period, period) == 0) {
+			return local;
+		}
+		// Defer expensive land searches until biome registry is live — avoids
+		// building once with empty anchors then rebuilding the whole layout.
+		if (biomeLookup() == null) {
+			return emptyLayout(worldSeed, period);
 		}
 		synchronized (LOCK) {
 			local = cache;
-			if (local != null && local.seed == worldSeed) {
-				if (!local.biomeAnchors.isEmpty() || biomeLookup() == null) {
-					return local;
-				}
+			if (local != null && local.seed == worldSeed && Double.compare(local.period, period) == 0) {
+				return local;
+			}
+			if (biomeLookup() == null) {
+				return emptyLayout(worldSeed, period);
 			}
 			local = build(worldSeed);
 			cache = local;
 			return local;
 		}
+	}
+
+	private static AnchorCache emptyLayout(long worldSeed, double period) {
+		int chunkWidth = Math.max(16, PlanetWorldConfig.chunkWidth());
+		return new AnchorCache(
+				worldSeed,
+				period,
+				Map.of(),
+				List.of(),
+				null,
+				Set.of(),
+				Set.of(),
+				Set.of(),
+				chunkWidth
+		);
 	}
 
 	private static AnchorCache build(long worldSeed) {
@@ -306,7 +332,7 @@ public final class GuaranteedStructures {
 		}
 
 		return new AnchorCache(
-				worldSeed, bySalt, biomeAnchors, stronghold, dungeonChunks, fortressChunks, bastionChunks, chunkWidth
+				worldSeed, period, bySalt, biomeAnchors, stronghold, dungeonChunks, fortressChunks, bastionChunks, chunkWidth
 		);
 	}
 
@@ -535,6 +561,7 @@ public final class GuaranteedStructures {
 
 	private record AnchorCache(
 			long seed,
+			double period,
 			Map<Integer, Set<Long>> bySalt,
 			List<BiomeAnchor> biomeAnchors,
 			ChunkPos stronghold,

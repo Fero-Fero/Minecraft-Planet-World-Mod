@@ -3,8 +3,10 @@ package com.planetworld.worldgen.compat;
 import net.neoforged.fml.ModList;
 
 /**
- * Soft-dep mod id probes for worldgen packs. Datapack-as-mod jars may use hyphen or underscore ids;
- * we accept any known candidate.
+ * Soft-dep mod id probes for worldgen packs.
+ * <p>
+ * Modrinth datapack-as-mod jars use {@code mr_*} ids (e.g. {@code mr_still_life}).
+ * Underscore / hyphen aliases are kept for older or renamed jars.
  */
 public final class WorldgenPackIds {
 	private WorldgenPackIds() {
@@ -15,11 +17,11 @@ public final class WorldgenPackIds {
 	}
 
 	public static boolean isLithosphereLoaded() {
-		return any("lithosphere");
+		return any("mr_lithosphere", "lithosphere");
 	}
 
 	public static boolean isStillLifeLoaded() {
-		return any("still_life", "stilllife", "still-life");
+		return any("mr_still_life", "still_life", "stilllife", "still-life");
 	}
 
 	/** Still Life requires Lithosphere. */
@@ -28,7 +30,7 @@ public final class WorldgenPackIds {
 	}
 
 	public static boolean isBloomingBiosphereLoaded() {
-		return any("blooming_biosphere", "bloomingbiosphere", "blooming-biosphere");
+		return any("mr_blooming_biosphere", "blooming_biosphere", "bloomingbiosphere", "blooming-biosphere");
 	}
 
 	public static boolean isSereneSeasonsLoaded() {

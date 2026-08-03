@@ -3,6 +3,8 @@ package com.planetworld.worldgen;
 import com.planetworld.wrap.processing.worldgen.OpenSimplex2S;
 import net.minecraft.util.Mth;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Low-frequency seamless land/ocean mask for Continents mode.
  * Embedding radius is kept small so a 2048 world gets ~2-3 large plates,
@@ -10,6 +12,9 @@ import net.minecraft.util.Mth;
  * <p>
  * Ridge reshape only escapes the thin river band near 0 — forcing |ridge|
  * high collapses biomes to plains/cherry and turns every inland into peaks.
+ * <p>
+ * Quart-cell cache: biome/density sample the same columns thousands of times
+ * during create-world and chunk fill; OpenSimplex4D dominates CPU there.
  */
 public final class ContinentalLandmask {
 	/**
@@ -22,7 +27,20 @@ public final class ContinentalLandmask {
 	/** Mild land bias — enough plate interior, still real ocean basins. */
 	private static final float LAND_BIAS = 0.1f;
 
+	/** 4-block cells match multi-noise quart sampling. */
+	private static final int CACHE_SHIFT = 2;
+	private static final int CACHE_MAX = 65536;
+	private static final ConcurrentHashMap<Long, Float> CACHE = new ConcurrentHashMap<>(4096);
+	private static volatile long cacheSeed = Long.MIN_VALUE;
+	private static volatile long cachePeriodBits = Long.MIN_VALUE;
+
 	private ContinentalLandmask() {
+	}
+
+	public static void clearCache() {
+		CACHE.clear();
+		cacheSeed = Long.MIN_VALUE;
+		cachePeriodBits = Long.MIN_VALUE;
 	}
 
 	/**
@@ -31,6 +49,39 @@ public final class ContinentalLandmask {
 	 */
 	public static float landFactor(double blockX, double blockZ, long worldSeed) {
 		double period = ContinentalClimate.periodBlocks();
+		ensureCacheEpoch(worldSeed, period);
+
+		int qx = Mth.floor(blockX) >> CACHE_SHIFT;
+		int qz = Mth.floor(blockZ) >> CACHE_SHIFT;
+		long key = (((long) qx) << 32) ^ (qz & 0xffffffffL);
+		Float hit = CACHE.get(key);
+		if (hit != null) {
+			return hit;
+		}
+
+		float land = computeLandFactor(blockX, blockZ, worldSeed, period);
+		if (CACHE.size() < CACHE_MAX) {
+			CACHE.put(key, land);
+		}
+		return land;
+	}
+
+	private static void ensureCacheEpoch(long worldSeed, double period) {
+		long bits = Double.doubleToRawLongBits(period);
+		if (cacheSeed == worldSeed && cachePeriodBits == bits) {
+			return;
+		}
+		synchronized (ContinentalLandmask.class) {
+			if (cacheSeed == worldSeed && cachePeriodBits == bits) {
+				return;
+			}
+			CACHE.clear();
+			cacheSeed = worldSeed;
+			cachePeriodBits = bits;
+		}
+	}
+
+	private static float computeLandFactor(double blockX, double blockZ, long worldSeed, double period) {
 		double half = period * 0.5;
 		double x = ContinentalClimate.wrapToSignedHalf(blockX, period, half);
 		double z = ContinentalClimate.wrapToSignedHalf(blockZ, period, half);
@@ -48,7 +99,6 @@ public final class ContinentalLandmask {
 		float raw = coarse + LAND_BIAS;
 		float land = Mth.clamp(smoothstep(-0.28f, 0.18f, raw), 0.0f, 1.0f);
 
-		// Polar ocean rings: |lat|→1 both poles (torus seam) become mostly water.
 		float absLat = (float) Math.abs(z / half);
 		float polar = Mth.clamp((absLat - 0.68f) / 0.30f, 0.0f, 1.0f);
 		polar = polar * polar * (3.0f - 2.0f * polar);

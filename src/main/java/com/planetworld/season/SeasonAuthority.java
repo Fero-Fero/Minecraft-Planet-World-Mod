@@ -69,12 +69,14 @@ public final class SeasonAuthority {
 	}
 
 	/**
-	 * Local season progress at Z: south is offset by half a year.
+	 * Local season progress at Z. Minecraft {@code +Z} is south — southern hemisphere is
+	 * offset by half a year from the northern calendar.
 	 */
 	public static float localSeasonProgress(Level level, double blockZ) {
 		float north = northernSeasonProgress(level);
 		double lat = latitude(level, blockZ);
-		if (lat >= 0.0) {
+		if (lat > 0.0) {
+			// South (+Z): opposite
 			return (north + 0.5f) % 1.0f;
 		}
 		return north;
@@ -104,6 +106,14 @@ public final class SeasonAuthority {
 
 	public static boolean isLocalSummer(Level level, double blockZ) {
 		return localWarmth(level, blockZ) > 0.2f;
+	}
+
+	/**
+	 * Random-tick growth speed for sunlit plants. Local summer → {@code 1.25} (25% faster),
+	 * else {@code 1.0}. Callers still apply night hold-back separately.
+	 */
+	public static float localGrowthMultiplier(Level level, double blockZ) {
+		return isLocalSummer(level, blockZ) ? 1.25f : 1.0f;
 	}
 
 	/**

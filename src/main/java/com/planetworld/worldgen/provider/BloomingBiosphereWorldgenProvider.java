@@ -3,6 +3,7 @@ package com.planetworld.worldgen.provider;
 import java.util.Optional;
 
 import com.planetworld.config.WorldgenPackChoice;
+import com.planetworld.worldgen.RealismBiomeSources;
 import com.planetworld.worldgen.compat.WorldgenPackIds;
 
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
@@ -28,8 +29,8 @@ final class BloomingBiosphereWorldgenProvider implements WorldgenProvider {
 		if (source.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) {
 			return true;
 		}
-		return StillLifeWorldgenProvider.containsNamespace(source, NS)
-				|| StillLifeWorldgenProvider.containsNamespace(source, "bloomingbiosphere");
+		return RealismBiomeSources.containsNamespace(source, NS)
+				|| RealismBiomeSources.containsNamespace(source, "bloomingbiosphere");
 	}
 
 	@Override
