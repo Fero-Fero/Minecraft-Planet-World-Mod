@@ -8,6 +8,7 @@
     "MonsterMixin",
     "CropBlockMixin",
     "DaylightDetectorBlockMixin",
+    "FarmBlockMixin",
     "FireBlockMixin",
     "SaplingBlockMixin",
     "NoiseBasedChunkGeneratorMixin",

@@ -1,12 +1,14 @@
 package com.planetworld;
 
 import com.planetworld.client.WrappedWorldCustomizeScreen;
+import com.planetworld.compat.SodiumCompat;
 import com.planetworld.config.PlanetSettingsAccess;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.render.LocalSkyHandler;
 import com.planetworld.worldgen.PlanetWorldPresets;
+import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -26,11 +28,17 @@ public class PlanetWorldClient {
         modEventBus.addListener(this::onRegisterPresetEditors);
         NeoForge.EVENT_BUS.register(CurvatureRenderer.class);
         NeoForge.EVENT_BUS.register(LocalSkyHandler.class);
+        NeoForge.EVENT_BUS.addListener(this::onClientLogin);
         NeoForge.EVENT_BUS.addListener(this::onClientLogout);
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {
-        PlanetWorld.LOGGER.info("Planet World client ready (curvature={})", PlanetWorldConfig.enableCurvatureShader());
+        PlanetWorld.LOGGER.info(
+                "Planet World client ready (curvature={}, sodium={}, terrainCurve={})",
+                PlanetWorldConfig.enableCurvatureShader(),
+                SodiumCompat.isSodiumLoaded(),
+                SodiumCompat.isTerrainCurvatureLive()
+        );
     }
 
     private void onRegisterPresetEditors(RegisterPresetEditorsEvent event) {
@@ -38,9 +46,23 @@ public class PlanetWorldClient {
                 new WrappedWorldCustomizeScreen(createWorldScreen));
     }
 
+    private void onClientLogin(ClientPlayerNetworkEvent.LoggingIn event) {
+        if (!SodiumCompat.shouldShowCurvatureDegradeTip()) {
+            return;
+        }
+        if (event.getPlayer() == null) {
+            return;
+        }
+        event.getPlayer().displayClientMessage(
+                Component.translatable("planetworld.compat.sodium.curvature_degraded"),
+                false
+        );
+        SodiumCompat.markCurvatureTipShown();
+    }
+
     private void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         TransformerRequests.clearChunkMapTransformer();
         PlanetSettingsAccess.clearActive();
+        SodiumCompat.resetSessionTips();
     }
 }
-

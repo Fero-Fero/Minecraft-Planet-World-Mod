@@ -1,6 +1,7 @@
 package com.planetworld.render;
 
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.season.SeasonAuthority;
 import com.planetworld.time.LocalTime;
 import com.planetworld.wrap.WrapMath;
 import net.minecraft.client.Minecraft;
@@ -10,7 +11,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Drives client sky / lighting from the local player's longitude + latitude.
+ * Drives client sky / lighting from the local player's longitude + latitude + season.
  */
 @OnlyIn(Dist.CLIENT)
 public final class LocalSkyHandler {
@@ -28,7 +29,6 @@ public final class LocalSkyHandler {
         return LocalTime.celestialAngle(mc.level, mc.player.getX(), mc.player.getZ());
     }
 
-    /** Sky-sphere tilt so the sun arcs toward the opposite pole as you leave the equator. */
     public static float localCelestialTiltDegrees() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
@@ -38,6 +38,19 @@ public final class LocalSkyHandler {
             return 0f;
         }
         return LocalTime.celestialTiltDegrees(mc.level, mc.player.getZ());
+    }
+
+    /** Sun disc scale ~0.90 winter … ~1.10 summer (subtle). */
+    public static float localSunScale() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return 1f;
+        }
+        if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
+            return 1f;
+        }
+        float warmth = SeasonAuthority.localWarmth(mc.level, mc.player.getZ());
+        return 1.0f + warmth * 0.08f;
     }
 
     @SubscribeEvent
@@ -56,5 +69,42 @@ public final class LocalSkyHandler {
             event.setGreen(event.getGreen() * 0.35f);
             event.setBlue(event.getBlue() * 0.45f);
         }
+        float warmth = SeasonAuthority.localWarmth(mc.level, mc.player.getZ());
+        if (warmth < -0.15f) {
+            float t = Math.min(1f, -warmth);
+            event.setRed(event.getRed() * (1f - 0.12f * t) + 0.05f * t);
+            event.setGreen(event.getGreen() * (1f - 0.08f * t) + 0.06f * t);
+            event.setBlue(event.getBlue() * (1f - 0.02f * t) + 0.10f * t);
+        } else if (warmth > 0.15f) {
+            float t = Math.min(1f, warmth);
+            event.setRed(event.getRed() * (1f - 0.05f * t) + 0.12f * t);
+            event.setGreen(event.getGreen() * (1f - 0.04f * t) + 0.08f * t);
+            event.setBlue(event.getBlue() * (1f - 0.10f * t));
+        }
+    }
+
+    @SubscribeEvent
+    public static void onFogDensity(ViewportEvent.RenderFog event) {
+        if (!PlanetWorldConfig.enableLocalizedTime()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || !WrapMath.isWrappedDimension(mc.level)) {
+            return;
+        }
+        float warmth = SeasonAuthority.localWarmth(mc.level, mc.player.getZ());
+        double absLat = Math.abs(SeasonAuthority.latitude(mc.level, mc.player.getZ()));
+        float pullIn = 0f;
+        if (warmth < 0f) {
+            pullIn += -warmth * 0.12f;
+        }
+        if (absLat > 0.7 && warmth < 0f) {
+            pullIn += 0.18f;
+        }
+        if (pullIn <= 0.01f) {
+            return;
+        }
+        float far = event.getFarPlaneDistance();
+        event.setFarPlaneDistance(Math.max(24f, far * (1f - pullIn)));
     }
 }

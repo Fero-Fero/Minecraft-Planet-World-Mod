@@ -107,6 +107,10 @@ public final class PlanetWorldConfig {
         return PlanetSettingsAccess.get().entityWrap();
     }
 
+    public static WorldgenPackChoice worldgenPackChoice() {
+        return PlanetSettingsAccess.get().worldgenPackChoice();
+    }
+
     public static boolean enableTerralithSeeds() {
         return !configLoaded() || ENABLE_TERRALITH_SEEDS.get();
     }

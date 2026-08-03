@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.planetworld.compat.SodiumCompat;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.render.LocalSkyHandler;
 import net.minecraft.client.Camera;
@@ -52,15 +53,21 @@ public abstract class LevelRendererMixin {
 	)
 	private void planetworld$tiltCelestialSphere(PoseStack poseStack, Quaternionf rotation, Operation<Void> original) {
 		original.call(poseStack, rotation);
-		float tilt = LocalSkyHandler.localCelestialTiltDegrees();
-		if (Math.abs(tilt) < 0.05f) {
+		if (!SodiumCompat.shouldApplyVanillaSkyTilt()) {
 			return;
 		}
-		poseStack.mulPose(new Quaternionf(new AxisAngle4f(
-				(float) Math.toRadians(tilt),
-				1.0f,
-				0.0f,
-				0.0f
-		)));
+		float tilt = LocalSkyHandler.localCelestialTiltDegrees();
+		if (Math.abs(tilt) >= 0.05f) {
+			poseStack.mulPose(new Quaternionf(new AxisAngle4f(
+					(float) Math.toRadians(tilt),
+					1.0f,
+					0.0f,
+					0.0f
+			)));
+		}
+		float sunScale = LocalSkyHandler.localSunScale();
+		if (Math.abs(sunScale - 1.0f) > 0.01f) {
+			poseStack.scale(sunScale, sunScale, sunScale);
+		}
 	}
 }

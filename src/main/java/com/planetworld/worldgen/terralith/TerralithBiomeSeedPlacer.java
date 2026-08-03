@@ -40,7 +40,8 @@ public final class TerralithBiomeSeedPlacer {
 		return TerralithCompat.isLoaded()
 				&& PlanetWorldConfig.isRealism()
 				&& PlanetWorldConfig.enableTerralithSeeds()
-				&& PlanetWorldConfig.planetCircumference() >= TerralithCompat.MIN_SEED_CIRCUMFERENCE;
+				&& ContinentalClimate.shouldSeedBiomes()
+				&& PlanetWorldConfig.worldgenPackChoice() == com.planetworld.config.WorldgenPackChoice.TERRALITH;
 	}
 
 	@Nullable

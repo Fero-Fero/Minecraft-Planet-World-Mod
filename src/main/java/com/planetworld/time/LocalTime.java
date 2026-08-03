@@ -1,6 +1,7 @@
 package com.planetworld.time;
 
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.season.SeasonAuthority;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.core.BlockPos;
@@ -52,21 +53,19 @@ public final class LocalTime {
 	}
 
 	/**
-	 * 1 at the equator, 0 at either pole — scales how high the sun climbs.
-	 * Uses the same dual-cold-pole latitude as Realism climate ({@code cos} poles).
+	 * 1 at the equator (adjusted by seasonal axial tilt), ~0 at the winter pole.
 	 */
 	public static float latitudeDayFactor(Level level, double z) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 1.0f;
 		}
-		double half = periodBlocksZ(level) * 0.5;
-		if (half <= 1.0e-3) {
-			return 1.0f;
-		}
-		double wrappedZ = wrapZ(level, z);
-		double lat = Mth.clamp(wrappedZ / half, -1.0, 1.0);
-		// cos(π/2 · lat): 1 equator, 0 poles
-		return Mth.clamp((float) Math.cos(lat * Math.PI * 0.5), 0.0f, 1.0f);
+		double lat = SeasonAuthority.latitude(level, z);
+		float base = Mth.clamp((float) Math.cos(lat * Math.PI * 0.5), 0.0f, 1.0f);
+		float bias = SeasonAuthority.axialDayBias(level);
+		// Shift effective latitude toward the summer pole
+		double shifted = Mth.clamp(lat - bias, -1.0, 1.0);
+		float seasonal = Mth.clamp((float) Math.cos(shifted * Math.PI * 0.5), 0.0f, 1.0f);
+		return Mth.clamp(base * 0.35f + seasonal * 0.65f, 0.0f, 1.0f);
 	}
 
 	/** Prefer the live dimension transformer period so C=256 worlds don't use a stale config width. */
@@ -234,20 +233,17 @@ public final class LocalTime {
 	}
 
 	/**
-	 * Degrees to tilt the celestial sphere toward the opposite pole.
-	 * Positive Z (south) tips the sun path northward.
+	 * Degrees to tilt the celestial sphere toward the opposite pole from latitude,
+	 * plus a gentle seasonal axial tilt (±{@link SeasonAuthority#MAX_AXIAL_TILT_DEGREES}):
+	 * midsummer nudges the sun north, midwinter south — continuous, no snaps.
 	 */
 	public static float celestialTiltDegrees(Level level, double z) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 0.0f;
 		}
-		double half = periodBlocksZ(level) * 0.5;
-		if (half <= 1.0e-3) {
-			return 0.0f;
-		}
-		double lat = Mth.clamp(wrapZ(level, z) / half, -1.0, 1.0);
-		// Tip toward opposite pole; up to ~72° near the caps.
-		return (float) (-lat * 72.0);
+		double lat = SeasonAuthority.latitude(level, z);
+		float seasonal = SeasonAuthority.northernAxialTiltDegrees(level);
+		return (float) (-lat * 72.0) + seasonal;
 	}
 
 	private static float celestialAngleFromTicks(long t) {

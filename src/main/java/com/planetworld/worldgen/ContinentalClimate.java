@@ -20,7 +20,7 @@ public final class ContinentalClimate {
 	 * Continents at/above this UI circumference get sparse one-of-each biome seeds
 	 * plus structure spacing scaled into the wrap (mansions, strongholds, etc.).
 	 */
-	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_REALISM_CIRCUMFERENCE;
+	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_FULL_COVERAGE_CIRCUMFERENCE;
 
 	/** Soft latitude pull — leave room for multi-noise variety. */
 	private static final float TEMP_BLEND = 0.72f;
@@ -41,7 +41,7 @@ public final class ContinentalClimate {
 				&& PlanetWorldConfig.planetCircumference() >= MIN_FULL_COVERAGE_CIRCUMFERENCE;
 	}
 
-	/** Continents ≥2048: scale rare structure spacing into the wrap. */
+	/** Full coverage ≥8192: scale rare structure spacing into the wrap. */
 	public static boolean shouldScaleStructures() {
 		return shouldSeedBiomes();
 	}

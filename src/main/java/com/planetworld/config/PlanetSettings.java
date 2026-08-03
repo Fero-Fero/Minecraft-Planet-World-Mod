@@ -13,12 +13,15 @@ public record PlanetSettings(
         boolean localizedWeather,
         boolean entityWrap,
         boolean curvatureShader,
-        WorldGenStyle worldGenStyle
+        WorldGenStyle worldGenStyle,
+        WorldgenPackChoice worldgenPackChoice
 ) {
     public static final int MIN_CIRCUMFERENCE = 256;
     public static final int MAX_CIRCUMFERENCE = 102_400;
     /** Realism climate is only offered at or above this half-period size. */
     public static final int MIN_REALISM_CIRCUMFERENCE = 2048;
+    /** Full one-of-each biome + structure guarantees (circumference &gt; 4096). */
+    public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = 8192;
     /** @deprecated Use {@link #MIN_REALISM_CIRCUMFERENCE}. */
     @Deprecated
     public static final int MIN_CONTINENTAL_CIRCUMFERENCE = MIN_REALISM_CIRCUMFERENCE;
@@ -31,17 +34,14 @@ public record PlanetSettings(
     public PlanetSettings {
         circumference = snapCircumference(circumference);
         worldGenStyle = worldGenStyle == null ? WorldGenStyle.NORMAL : worldGenStyle;
+        worldgenPackChoice = worldgenPackChoice == null ? WorldgenPackChoice.VANILLA : worldgenPackChoice;
         if (circumference < MIN_REALISM_CIRCUMFERENCE) {
             worldGenStyle = WorldGenStyle.NORMAL;
         }
-        // Persist the auto-derived intensity so NBT/config stay consistent with runtime.
+        worldgenPackChoice = worldgenPackChoice.sanitize();
         curvatureIntensity = effectiveCurvatureIntensityFor(circumference);
     }
 
-    /**
-     * Display helper: physical curve percent at 64 blocks ({@code 100 * d / (2R)}).
-     * Shader uses {@code drop = d^2/(2R)} directly (no intensity boost).
-     */
     public float effectiveCurvatureIntensity() {
         return effectiveCurvatureIntensityFor(circumference);
     }
@@ -74,7 +74,10 @@ public record PlanetSettings(
         return isRealism();
     }
 
-    /** Snap to the nearest allowed circumference step. */
+    public boolean allowsFullCoverage() {
+        return circumference >= MIN_FULL_COVERAGE_CIRCUMFERENCE;
+    }
+
     public static int snapCircumference(int value) {
         int best = CIRCUMFERENCE_STEPS[0];
         int bestDist = Math.abs(value - best);
@@ -102,10 +105,6 @@ public record PlanetSettings(
         return 0;
     }
 
-    /**
-     * Config-backed defaults, usable at any point during startup: registry bootstrap constructs
-     * chunk generators before the loader has read the config file.
-     */
     public static PlanetSettings defaults() {
         boolean loaded = PlanetWorldConfig.configLoaded();
         int circumference = loaded
@@ -118,48 +117,48 @@ public record PlanetSettings(
                 loaded ? PlanetWorldConfig.ENABLE_LOCALIZED_WEATHER.getAsBoolean() : PlanetWorldConfig.DEFAULT_LOCALIZED_WEATHER,
                 loaded ? PlanetWorldConfig.ENABLE_ENTITY_WRAP.getAsBoolean() : PlanetWorldConfig.DEFAULT_ENTITY_WRAP,
                 loaded ? PlanetWorldConfig.ENABLE_CURVATURE_SHADER.getAsBoolean() : PlanetWorldConfig.DEFAULT_CURVATURE_SHADER,
-                WorldGenStyle.NORMAL
+                WorldGenStyle.NORMAL,
+                WorldgenPackChoice.VANILLA
         );
     }
 
     public double halfCircumference() {
-        // `circumference` in UI/config is treated as the *half-period* (what you
-        // asked for: e.g. seam effects around x=±256 inside a 512-wide world).
         return circumference;
     }
 
     public int chunkWidth() {
-        // `chunkWidth()` is the full torus width in chunks.
-        // fullBlocks = 2*circumference, so fullChunks = (2*circumference)/16 = circumference/8
         return Math.max(1, circumference / 8);
     }
 
     public PlanetSettings withCircumference(int value) {
-        return new PlanetSettings(value, curvatureIntensity, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle);
+        return new PlanetSettings(value, curvatureIntensity, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withCurvatureIntensity(float value) {
-        // Intensity is auto-derived; keep API for callers but ignore manual value.
-        return new PlanetSettings(circumference, value, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle);
+        return new PlanetSettings(circumference, value, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withLocalizedTime(boolean value) {
-        return new PlanetSettings(circumference, curvatureIntensity, value, localizedWeather, entityWrap, curvatureShader, worldGenStyle);
+        return new PlanetSettings(circumference, curvatureIntensity, value, localizedWeather, entityWrap, curvatureShader, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withLocalizedWeather(boolean value) {
-        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, value, entityWrap, curvatureShader, worldGenStyle);
+        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, value, entityWrap, curvatureShader, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withEntityWrap(boolean value) {
-        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, value, curvatureShader, worldGenStyle);
+        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, value, curvatureShader, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withCurvatureShader(boolean value) {
-        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, entityWrap, value, worldGenStyle);
+        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, entityWrap, value, worldGenStyle, worldgenPackChoice);
     }
 
     public PlanetSettings withWorldGenStyle(WorldGenStyle style) {
-        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, entityWrap, curvatureShader, style);
+        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, entityWrap, curvatureShader, style, worldgenPackChoice);
+    }
+
+    public PlanetSettings withWorldgenPackChoice(WorldgenPackChoice choice) {
+        return new PlanetSettings(circumference, curvatureIntensity, localizedTime, localizedWeather, entityWrap, curvatureShader, worldGenStyle, choice);
     }
 }

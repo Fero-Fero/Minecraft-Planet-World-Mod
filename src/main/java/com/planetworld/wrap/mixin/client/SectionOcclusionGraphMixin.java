@@ -15,7 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(SectionOcclusionGraph.class)
 public class SectionOcclusionGraphMixin {
 	/**
-	 * ChunkTrackingView is mainly used server-side. This is the only usage of it client-side. Because the server and client do not handle chunks in the same way, they cannot use the same code.
+	 * ChunkTrackingView is mainly used server-side. This is the only usage of it client-side.
+	 * Harmless under Sodium (Sodium uses its own occlusion graph); we only stash the wrap
+	 * transformer for any vanilla distance checks that still run.
 	 */
 	@Inject(method = "isInViewDistance", at = @At("HEAD"))
 	public void isInViewDistance(BlockPos pos, BlockPos origin, CallbackInfoReturnable<Boolean> cir) {

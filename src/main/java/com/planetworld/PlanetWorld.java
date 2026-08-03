@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.planetworld.config.PlanetSettingsLifecycle;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.network.SyncPlanetSettingsPayload;
+import com.planetworld.polar.PolarHazardHandler;
 import com.planetworld.sleep.SleepHandler;
 import com.planetworld.time.LocalTimeHandler;
 import com.planetworld.weather.LocalizedWeatherHandler;
@@ -39,6 +40,7 @@ public class PlanetWorld {
         NeoForge.EVENT_BUS.register(LocalTimeHandler.class);
         NeoForge.EVENT_BUS.register(SleepHandler.class);
         NeoForge.EVENT_BUS.register(LocalizedWeatherHandler.class);
+        NeoForge.EVENT_BUS.register(PolarHazardHandler.class);
         NeoForge.EVENT_BUS.register(PlanetSettingsLifecycle.class);
     }
 

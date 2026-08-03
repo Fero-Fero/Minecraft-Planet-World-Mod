@@ -21,8 +21,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Continents ≥2048: force a baseline of structures inside the wrap and paint
- * matching biome patches so they can actually generate.
+ * Realism full-coverage (≥8192): force a baseline of Overworld + Nether structures
+ * inside the wrap and paint matching biome patches so they can actually generate.
+ * Mineshafts / buried treasure (salt 0) are skipped — salt collision risk.
  */
 public final class GuaranteedStructures {
 	public static final int WOODLAND_MANSION_SALT = 10387319;
@@ -31,6 +32,14 @@ public final class GuaranteedStructures {
 	public static final int DESERT_PYRAMID_SALT = 14357617;
 	public static final int JUNGLE_PYRAMID_SALT = 14357619;
 	public static final int OCEAN_MONUMENT_SALT = 10387313;
+	public static final int IGLOO_SALT = 14357618;
+	public static final int SWAMP_HUT_SALT = 14357620;
+	public static final int SHIPWRECK_SALT = 165745295;
+	public static final int OCEAN_RUINS_SALT = 14357621;
+	public static final int TRAIL_RUINS_SALT = 83469867;
+	public static final int ANCIENT_CITY_SALT = 20083232;
+	public static final int RUINED_PORTAL_SALT = 34222645;
+	public static final int TRIAL_CHAMBERS_SALT = 94251327;
 	/** Shared fortress + bastion structure-set salt. */
 	public static final int NETHER_COMPLEXES_SALT = 30084232;
 
@@ -41,6 +50,14 @@ public final class GuaranteedStructures {
 	private static final int DESERT_TEMPLE_COUNT = 3;
 	private static final int JUNGLE_TEMPLE_COUNT = 3;
 	private static final int OCEAN_MONUMENT_COUNT = 3;
+	private static final int IGLOO_COUNT = 3;
+	private static final int SWAMP_HUT_COUNT = 3;
+	private static final int SHIPWRECK_COUNT = 4;
+	private static final int OCEAN_RUINS_COUNT = 4;
+	private static final int TRAIL_RUINS_COUNT = 3;
+	private static final int ANCIENT_CITY_COUNT = 2;
+	private static final int RUINED_PORTAL_COUNT = 4;
+	private static final int TRIAL_CHAMBERS_COUNT = 3;
 	private static final int DUNGEON_COUNT = 10;
 	private static final int NETHER_FORTRESS_COUNT = 3;
 	private static final int NETHER_BASTION_COUNT = 4;
@@ -200,6 +217,60 @@ public final class GuaranteedStructures {
 			ChunkPos chunk = toChunk(pos[0], pos[1]);
 			addForced(bySalt, OCEAN_MONUMENT_SALT, chunk, usedChunks);
 			addBiome(biomeAnchors, biomes, Biomes.DEEP_OCEAN, pos[0], pos[1], MONUMENT_BIOME_RADIUS);
+		}
+
+		for (int i = 0; i < IGLOO_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0x16610000L + i * 31L, 0.72, 0.95, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, IGLOO_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.SNOWY_TAIGA, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < SWAMP_HUT_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0x54A47000L + i * 37L, 0.0, 0.35, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, SWAMP_HUT_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.SWAMP, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < SHIPWRECK_COUNT; i++) {
+			double[] pos = findOceanAbs(worldSeed, 0x541F0000L + i * 41L, 0.0, 0.55, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, SHIPWRECK_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.OCEAN, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < OCEAN_RUINS_COUNT; i++) {
+			double[] pos = findOceanAbs(worldSeed, 0x0CEA0000L + i * 43L, 0.0, 0.50, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, OCEAN_RUINS_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.OCEAN, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < TRAIL_RUINS_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0x72A11000L + i * 47L, 0.15, 0.55, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, TRAIL_RUINS_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.TAIGA, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < ANCIENT_CITY_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0xAC170000L + i * 53L, 0.0, 0.45, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, ANCIENT_CITY_SALT, chunk, usedChunks);
+			addBiome(biomeAnchors, biomes, Biomes.DEEP_DARK, pos[0], pos[1], BIOME_PATCH_RADIUS);
+		}
+
+		for (int i = 0; i < RUINED_PORTAL_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0xF027A100L + i * 59L, 0.0, 0.70, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, RUINED_PORTAL_SALT, chunk, usedChunks);
+		}
+
+		for (int i = 0; i < TRIAL_CHAMBERS_COUNT; i++) {
+			double[] pos = findLandAbs(worldSeed, 0x72A1C000L + i * 61L, 0.0, 0.50, period, half, usedChunks);
+			ChunkPos chunk = toChunk(pos[0], pos[1]);
+			addForced(bySalt, TRIAL_CHAMBERS_SALT, chunk, usedChunks);
 		}
 
 		Set<Long> dungeonChunks = new HashSet<>();

@@ -2,5 +2,19 @@
   "pack": {
     "description": "Planet World resources",
     "pack_format": 34
+  },
+  "sodium": {
+    "ignored_shaders": [
+      "rendertype_solid.vsh",
+      "rendertype_solid.json",
+      "rendertype_cutout.vsh",
+      "rendertype_cutout.json",
+      "rendertype_cutout_mipped.vsh",
+      "rendertype_cutout_mipped.json",
+      "rendertype_translucent.vsh",
+      "rendertype_translucent.json",
+      "rendertype_tripwire.vsh",
+      "rendertype_tripwire.json"
+    ]
   }
 }

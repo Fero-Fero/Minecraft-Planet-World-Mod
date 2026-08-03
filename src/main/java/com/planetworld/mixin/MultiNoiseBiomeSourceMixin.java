@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.planetworld.worldgen.ContinentalClimate;
 import com.planetworld.worldgen.GuaranteedStructures;
 import com.planetworld.worldgen.OverworldBiomeSeedPlacer;
+import com.planetworld.worldgen.provider.WorldgenProviders;
 import com.planetworld.worldgen.terralith.TerralithBiomeSeedPlacer;
 import com.planetworld.worldgen.terralith.TerralithCompat;
 import com.planetworld.wrap.processing.worldgen.OpenSimplex2S;
@@ -40,7 +41,8 @@ public abstract class MultiNoiseBiomeSourceMixin {
 			return original.call(quartX, quartY, quartZ, sampler);
 		}
 		MultiNoiseBiomeSource self = (MultiNoiseBiomeSource) (Object) this;
-		if (!TerralithCompat.isRemappableOverworldSource(self)) {
+		if (!TerralithCompat.isRemappableOverworldSource(self)
+				&& !WorldgenProviders.isRemappableOverworldSource(self)) {
 			return original.call(quartX, quartY, quartZ, sampler);
 		}
 

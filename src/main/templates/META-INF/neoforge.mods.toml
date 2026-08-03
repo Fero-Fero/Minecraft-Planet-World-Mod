@@ -79,3 +79,54 @@ config="${mod_id}-sable.mixins.json"
     versionRange="[6.0.0,)"
     ordering="NONE"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="sereneseasons"
+    type="optional"
+    versionRange="[9.0.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="lithosphere"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="still_life"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="blooming_biosphere"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="farmersdelight"
+    type="optional"
+    versionRange="[1.2.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+# Sodium: terrain shaders replaced — PW acknowledges via pack.mcmeta ignored_shaders (strategy A).
+# Do not mark incompatible; wrap / local time / weather still work; horizon curve degrades.
+[[dependencies.${mod_id}]]
+    modId="sodium"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="iris"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="CLIENT"

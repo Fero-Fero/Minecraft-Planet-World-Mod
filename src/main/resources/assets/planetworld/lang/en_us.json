@@ -22,9 +22,15 @@
   "planetworld.customize.world_gen_style": "World Generation",
   "planetworld.customize.world_gen_style.normal": "Normal",
   "planetworld.customize.world_gen_style.realism": "Realism",
+  "planetworld.customize.worldgen_pack": "Worldgen Pack",
+  "planetworld.customize.worldgen_pack.vanilla": "Vanilla",
+  "planetworld.customize.worldgen_pack.terralith": "Terralith",
+  "planetworld.customize.worldgen_pack.still_life": "Still Life + Lithosphere",
+  "planetworld.customize.worldgen_pack.blooming_biosphere": "Blooming Biosphere",
   "planetworld.customize.realism_requires": "Realism requires circumference ≥ %s",
   "planetworld.customize.localized_time": "Localized Time",
   "planetworld.customize.localized_weather": "Localized Weather",
   "planetworld.customize.invalid": "Invalid settings",
-  "planetworld.customize.world_gen_style.realism.tooltip": "Earth-like climate: cold north (−Z), hot south (+Z), large landmasses and oceans. At 2048+: every overworld biome once, stronghold + woodland mansion. Torus wrap stays seamless."
+  "planetworld.customize.world_gen_style.realism.tooltip": "Earth-like climate on a torus. Full biome+structure coverage at circumference ≥ 8192.",
+  "planetworld.compat.sodium.curvature_degraded": "Planet World: Sodium is active — horizon curvature is disabled (vanilla terrain shaders are not used). Wrap, local time, and weather still work."
 }

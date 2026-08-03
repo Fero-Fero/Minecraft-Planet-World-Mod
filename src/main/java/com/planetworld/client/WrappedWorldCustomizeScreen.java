@@ -3,6 +3,8 @@ package com.planetworld.client;
 import com.planetworld.config.PlanetSettings;
 import com.planetworld.config.PlanetSettingsAccess;
 import com.planetworld.config.WorldGenStyle;
+import com.planetworld.config.WorldgenPackChoice;
+import com.planetworld.worldgen.provider.WorldgenProviders;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
@@ -14,12 +16,15 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+import java.util.List;
+
 @OnlyIn(Dist.CLIENT)
 public class WrappedWorldCustomizeScreen extends Screen {
     private final CreateWorldScreen parent;
     private PlanetSettings settings;
     private int circumferenceStepIndex;
     private CycleButton<WorldGenStyle> worldGenStyleButton;
+    private CycleButton<WorldgenPackChoice> worldgenPackButton;
     private Component status = CommonComponents.EMPTY;
 
     public WrappedWorldCustomizeScreen(CreateWorldScreen parent) {
@@ -61,6 +66,21 @@ public class WrappedWorldCustomizeScreen extends Screen {
         this.addRenderableWidget(this.worldGenStyleButton);
         refreshWorldGenStyleActive();
 
+        y += 24;
+        List<WorldgenPackChoice> packs = WorldgenProviders.availableChoices();
+        WorldgenPackChoice initialPack = this.settings.worldgenPackChoice().sanitize();
+        if (!packs.contains(initialPack)) {
+            initialPack = WorldgenPackChoice.VANILLA;
+            this.settings = this.settings.withWorldgenPackChoice(initialPack);
+        }
+        this.worldgenPackButton = CycleButton.builder(this::packLabel)
+                .withValues(packs)
+                .withInitialValue(initialPack)
+                .create(centerX - 110, y, 220, 20,
+                        Component.translatable("planetworld.customize.worldgen_pack"),
+                        (b, value) -> this.settings = this.settings.withWorldgenPackChoice(value));
+        this.addRenderableWidget(this.worldgenPackButton);
+
         y += 28;
         this.addRenderableWidget(CycleButton.onOffBuilder(this.settings.curvatureShader())
                 .create(centerX - 110, y, 220, 20,
@@ -89,6 +109,10 @@ public class WrappedWorldCustomizeScreen extends Screen {
         return Component.translatable("planetworld.customize.world_gen_style." + style.name().toLowerCase());
     }
 
+    private Component packLabel(WorldgenPackChoice pack) {
+        return Component.translatable("planetworld.customize.worldgen_pack." + pack.name().toLowerCase());
+    }
+
     private boolean currentAllowsRealism() {
         int circumference = PlanetSettings.CIRCUMFERENCE_STEPS[this.circumferenceStepIndex];
         return circumference >= PlanetSettings.MIN_REALISM_CIRCUMFERENCE;
@@ -114,7 +138,8 @@ public class WrappedWorldCustomizeScreen extends Screen {
         }
         this.settings = this.settings
                 .withCircumference(circumference)
-                .withWorldGenStyle(style);
+                .withWorldGenStyle(style)
+                .withWorldgenPackChoice(this.settings.worldgenPackChoice().sanitize());
         PlanetSettingsAccess.setPending(this.settings);
         this.minecraft.setScreen(this.parent);
     }

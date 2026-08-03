@@ -15,7 +15,7 @@ adapted from Fabric to NeoForge. Full license text in `LICENSE`.
 | Phase | What it does |
 |-------|----------------|
 | Period | Terrain and biomes repeat every circumference along X |
-| Curvature | Client horizon drop + entity visual offset (hitboxes stay flat) |
+| Curvature | Client horizon drop via vanilla terrain shaders (inactive under Sodium — see compat table) |
 | Local time | `LocalTime = (global + wrapX(x)/width * 24000) % 24000` |
 | Multiplayer | Localized sleep / weather bands |
 | Config | `planetworld-common.toml` |
@@ -36,7 +36,13 @@ gradlew.bat check
 | **Create 6.0.10** | Soft dependency |
 | **Sable 2.0.x** | Soft dependency |
 | **Create Aeronautics (bundled)** | WIP |
-| **Terralith 2.5+** | Soft dependency | Realism (≥2048): climate remap feeds Terralith biomes; sparse wrap-safe surface seeds. Fantasy/skylands toggleable in config. |
+| **Terralith 2.5+** | Soft dependency | Realism (≥2048): climate remap feeds Terralith biomes; sparse wrap-safe surface seeds at C≥8192. Fantasy/skylands toggleable in config. |
+| **Serene Seasons** | Soft dependency | SeasonAuthority reads SS when present; else 5-day half-year. Hemisphere-aware sun/polar hazards; does not replace SS crop/snow. |
+| **Still Life + Lithosphere** | Soft dependency | Customize pack option when both loaded (exclusive with Terralith). Seed catalog TBD. |
+| **Blooming Biosphere** | Soft dependency | Customize pack option when exclusive of Terralith/Still Life. Seed catalog TBD. |
+| **Farmer's Delight** | Soft dependency | Cold farmland also reverts rich soil farmland (crops drop). |
+| **Sodium** | Soft dependency | Toast cleared via `pack.mcmeta` `ignored_shaders`. Horizon curvature **degrades** (flat) under Sodium; wrap / local time / weather still work. SCSS backend TBD. |
+| **Iris / Oculus** | Soft dependency | Vanilla `renderSky` tilt skipped (Iris owns sky). Local time via `getTimeOfDay` still applies. |
 | **End Remastered 6.x** | Soft dependency | Realism (≥2048): land-anchored plains stronghold so custom eyes can locate an End portal. |
 | Citadel / GeckoLib | **Not used** | — |
 

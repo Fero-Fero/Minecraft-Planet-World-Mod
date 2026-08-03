@@ -21,7 +21,7 @@ public abstract class FireBlockMixin {
         if (!PlanetWorldConfig.enableLocalizedWeather() || !WrapMath.isWrappedDimension(level)) {
             return;
         }
-        if (!LocalizedWeatherHandler.shouldExtinguishFire(level, pos.getX())) {
+        if (!LocalizedWeatherHandler.shouldExtinguishFire(level, pos.getX(), pos.getZ())) {
             cir.setReturnValue(false);
         }
     }

@@ -1,5 +1,6 @@
 package com.planetworld.mixin.client;
 
+import com.planetworld.compat.SodiumCompat;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.wrap.WrapMath;
@@ -14,7 +15,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
  * <p>
  * Disabled while terrain itself is not curvature-remapped: offsetting only
  * entities makes mobs float up into cages or sink into floors as you approach
- * from different directions. Re-enable when block/terrain curvature is live.
+ * from different directions. Re-enable when block/terrain curvature is live
+ * ({@link SodiumCompat#isTerrainCurvatureLive()}).
  */
 @Mixin(EntityRenderDispatcher.class)
 public abstract class EntityRenderDispatcherMixin {
@@ -23,7 +25,9 @@ public abstract class EntityRenderDispatcherMixin {
 
 	@ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 1)
 	private double planetworld$curveEntityY(double y, Entity entity) {
-		if (!APPLY_ENTITY_CURVATURE || !PlanetWorldConfig.enableCurvatureShader()) {
+		if (!APPLY_ENTITY_CURVATURE
+				|| !SodiumCompat.isTerrainCurvatureLive()
+				|| !PlanetWorldConfig.enableCurvatureShader()) {
 			return y;
 		}
 		if (entity.level() == null || !WrapMath.isWrappedDimension(entity.level())) {

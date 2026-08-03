@@ -1,5 +1,6 @@
 package com.planetworld.render;
 
+import com.planetworld.compat.SodiumCompat;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.WrapMath;
 import net.minecraft.client.Minecraft;
@@ -13,6 +14,8 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
  * {@code R = circumference / pi} (UI circumference is the half-period).
  * Drop is {@code d^2 / (2R)} with no artificial intensity boost.
  * Uniforms are only non-zero while the world is being drawn (not GUI/hotbar).
+ * <p>
+ * Under Sodium (strategy A), terrain curvature is inactive — see {@link SodiumCompat}.
  */
 @OnlyIn(Dist.CLIENT)
 public final class CurvatureRenderer {
@@ -31,6 +34,9 @@ public final class CurvatureRenderer {
 
     public static boolean isActive() {
         if (!levelRendering || !PlanetWorldConfig.enableCurvatureShader()) {
+            return false;
+        }
+        if (!SodiumCompat.shouldApplyVanillaTerrainCurvature()) {
             return false;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -57,7 +63,7 @@ public final class CurvatureRenderer {
     }
 
     public static float curvatureDrop(double horizontalDistance) {
-        if (!PlanetWorldConfig.enableCurvatureShader()) {
+        if (!PlanetWorldConfig.enableCurvatureShader() || !SodiumCompat.isTerrainCurvatureLive()) {
             return 0f;
         }
         double radius = planetRadiusBlocks();

@@ -52,6 +52,9 @@ public class PlanetWorldSavedData extends SavedData {
 		WorldGenStyle style = tag.contains("worldGenStyle")
 				? WorldGenStyle.fromName(tag.getString("worldGenStyle"))
 				: WorldGenStyle.NORMAL;
+		WorldgenPackChoice pack = tag.contains("worldgenPackChoice")
+				? WorldgenPackChoice.fromName(tag.getString("worldgenPackChoice"))
+				: WorldgenPackChoice.VANILLA;
 		PlanetWorldSavedData data = new PlanetWorldSavedData(new PlanetSettings(
 				tag.getInt("circumference"),
 				tag.getFloat("curvatureIntensity"),
@@ -59,7 +62,8 @@ public class PlanetWorldSavedData extends SavedData {
 				tag.getBoolean("localizedWeather"),
 				tag.getBoolean("entityWrap"),
 				!tag.contains("curvatureShader") || tag.getBoolean("curvatureShader"),
-				style
+				style,
+				pack
 		));
 		OutOfBoundsChunkHealer.readWrapBackup(tag).ifPresent(wrap -> data.wrappingBackup = wrap);
 		return data;
@@ -74,6 +78,7 @@ public class PlanetWorldSavedData extends SavedData {
 		tag.putBoolean("entityWrap", settings.entityWrap());
 		tag.putBoolean("curvatureShader", settings.curvatureShader());
 		tag.putString("worldGenStyle", settings.worldGenStyle().name());
+		tag.putString("worldgenPackChoice", settings.worldgenPackChoice().name());
 		OutOfBoundsChunkHealer.writeWrapBackup(tag, wrappingBackup);
 		return tag;
 	}
