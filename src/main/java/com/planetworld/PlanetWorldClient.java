@@ -5,6 +5,7 @@ import com.planetworld.compat.SodiumCompat;
 import com.planetworld.config.PlanetSettingsAccess;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.render.ContinuousMeridian;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.render.LocalSkyHandler;
 import com.planetworld.worldgen.PlanetWorldPresets;
@@ -64,5 +65,6 @@ public class PlanetWorldClient {
         TransformerRequests.clearChunkMapTransformer();
         PlanetSettingsAccess.clearActive();
         SodiumCompat.resetSessionTips();
+        ContinuousMeridian.reset();
     }
 }

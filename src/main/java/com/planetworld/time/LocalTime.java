@@ -242,42 +242,55 @@ public final class LocalTime {
 		return level.getBrightness(LightLayer.BLOCK, lightPos) < GROWTH_LIGHT_LEVEL;
 	}
 
+	/** Celestial angle 0..1 from global dayTime — same sun/moon for every player. */
+	public static float worldCelestialAngle(Level level) {
+		return celestialAngleFromTicks(Math.floorMod(globalTime(level), DAY_LENGTH));
+	}
+
 	/** Celestial angle 0..1 for sky rendering at longitude {@code x}. */
 	public static float celestialAngle(Level level, double x) {
 		return celestialAngle(level, x, 0.0);
 	}
 
 	/**
-	 * Celestial angle at (x, z). Longitude drives the day clock everywhere — including poles —
-	 * so the sun <em>circles</em> the horizon instead of freezing at midnight (moon overhead).
-	 * Observer latitude is applied as a sky-sphere tilt; seasons as ±10° axial lean.
+	 * Longitude-local celestial angle (gameplay helpers). Sky rendering uses
+	 * {@link #worldCelestialAngle(Level)} so all players share one sun/moon.
 	 */
 	public static float celestialAngle(Level level, double x, double z) {
 		return celestialAngleFromTicks(localTime(level, x));
 	}
 
 	/**
-	 * Degrees to tip the celestial sphere for the viewer’s latitude + season.
-	 * Applied around sky pose-stack <em>Z</em> after {@code YP(-90)} and before {@code XP(time)}
-	 * (see {@code LevelRendererMixin}) so the sun keeps circling a tipped axis.
+	 * Degrees to tip the celestial sphere for a continuous meridian latitude + season.
+	 * Applied around sky pose-stack <em>Z</em> after {@code YP(-90)} and before {@code XP(time)}.
+	 * <p>
+	 * Pass latitude from {@link com.planetworld.render.ContinuousMeridian} on the client so
+	 * crossing the polar wrap seam does not flip the tip (+1 ↔ −1).
 	 * <ul>
 	 *   <li>{@code lat = 0}: E–W overhead arc; ±10° equatorial seasonal lean only.</li>
 	 *   <li>{@code lat = -1} (north pole): summer → 70°, winter → 80° tip.</li>
 	 *   <li>{@code lat = +1} (south pole): mirrored via latitude sign.</li>
 	 * </ul>
-	 * Formula: {@code latTip = -lat * (75 - northernWarmth * 5)} plus
-	 * {@code northernWarmth * 10 * (1 - |lat|)} equator lean.
 	 */
-	public static float celestialTiltDegrees(Level level, double z) {
+	public static float celestialTiltDegrees(Level level, double latitude) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 0.0f;
 		}
-		double lat = SeasonAuthority.latitude(level, z);
+		double lat = Mth.clamp(latitude, -1.0, 1.0);
 		float warmth = SeasonAuthority.northernWarmth(level);
 		float poleMagnitude = POLE_TIP_BASE_DEGREES - warmth * POLE_TIP_SEASON_SWING;
 		float latTip = (float) (-lat * poleMagnitude);
 		float equatorLean = warmth * SeasonAuthority.MAX_AXIAL_TILT_DEGREES * (1.0f - (float) Math.abs(lat));
 		return latTip + equatorLean;
+	}
+
+	/**
+	 * @deprecated Prefer {@link #celestialTiltDegrees(Level, double)} with continuous latitude.
+	 * Uses wrapped {@code z/half}, which flips at the polar seam.
+	 */
+	@Deprecated
+	public static float celestialTiltDegreesFromWrappedZ(Level level, double z) {
+		return celestialTiltDegrees(level, SeasonAuthority.latitude(level, z));
 	}
 
 	private static float celestialAngleFromTicks(long t) {

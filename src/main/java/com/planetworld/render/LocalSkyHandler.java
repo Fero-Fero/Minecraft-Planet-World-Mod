@@ -4,6 +4,7 @@ import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.season.SeasonAuthority;
 import com.planetworld.time.LocalTime;
 import com.planetworld.wrap.WrapMath;
+import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -11,22 +12,27 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Drives client sky / lighting from the local player's longitude + latitude + season.
+ * Client sky: world-fixed sun/moon clock (same for every player) plus continuous
+ * meridian tip so polar wrap crossings do not reverse the sky.
  */
 @OnlyIn(Dist.CLIENT)
 public final class LocalSkyHandler {
     private LocalSkyHandler() {
     }
 
+    /**
+     * Global day-cycle angle for sun/moon rendering — identical for all players.
+     * Longitude-local time still drives gameplay ({@link LocalTime#isDay}, crops, spawn).
+     */
     public static float localCelestialAngle() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) {
+        if (mc.level == null) {
             return 0f;
         }
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
-            return mc.level.getTimeOfDay(1.0f);
+            return LocalTime.worldCelestialAngle(mc.level);
         }
-        return LocalTime.celestialAngle(mc.level, mc.player.getX(), mc.player.getZ());
+        return LocalTime.worldCelestialAngle(mc.level);
     }
 
     public static float localCelestialTiltDegrees() {
@@ -37,7 +43,19 @@ public final class LocalSkyHandler {
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
             return 0f;
         }
-        return LocalTime.celestialTiltDegrees(mc.level, mc.player.getZ());
+        DimensionTransformer t = mc.level.getTransformer();
+        double period;
+        double wrappedZ = mc.player.getZ();
+        if (t != null && t.isWrapped()) {
+            period = t.Coord.Z.domainLength;
+            wrappedZ = t.Coord.Z.wrap(wrappedZ);
+        } else {
+            period = com.planetworld.worldgen.ContinentalClimate.periodBlocks();
+        }
+        double half = period * 0.5;
+        double continuousZ = ContinuousMeridian.continuousZ(wrappedZ, period);
+        double lat = ContinuousMeridian.latitude(continuousZ, half);
+        return LocalTime.celestialTiltDegrees(mc.level, lat);
     }
 
     /** Sun disc scale from global northern calendar (~0.92 winter … ~1.08 summer). */

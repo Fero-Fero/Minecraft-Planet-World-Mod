@@ -11,12 +11,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Client sky / sun / moon use the local player's spatial time.
+ * Client sky / sun / moon use the shared world day clock (same for every player).
+ * Latitude tip is applied separately in {@code LevelRendererMixin}.
  */
 @Mixin(LevelTimeAccess.class)
 public interface ClientLevelMixin {
     @Inject(method = "getTimeOfDay", at = @At("HEAD"), cancellable = true)
-    private void planetworld$localTimeOfDay(float partialTick, CallbackInfoReturnable<Float> cir) {
+    private void planetworld$worldTimeOfDay(float partialTick, CallbackInfoReturnable<Float> cir) {
         if (!PlanetWorldConfig.enableLocalizedTime()) {
             return;
         }
