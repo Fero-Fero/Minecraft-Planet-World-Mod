@@ -115,7 +115,8 @@ dependencies {
     // configured path into the runtime classpath the same way a player would drop them in mods/.
     def runtimeModDir = file('run/mods')
     def projectModsDir = file('mods')
-    if (project.hasProperty('withSableRuntime') || project.hasProperty('withAeronauticsRuntime')) {
+    if (project.hasProperty('withSableRuntime') || project.hasProperty('withAeronauticsRuntime')
+            || project.hasProperty('withTerralithRuntime')) {
         def sources = [runtimeModDir, projectModsDir]
         sources.each { dir ->
             if (!dir.directory) {
@@ -128,6 +129,11 @@ dependencies {
             }
             if (project.hasProperty('withAeronauticsRuntime')) {
                 dir.eachFileMatch(~/(?i).*aeronautics.*\.jar/) { jar ->
+                    localRuntime files(jar)
+                }
+            }
+            if (project.hasProperty('withTerralithRuntime')) {
+                dir.eachFileMatch(~/(?i).*terralith.*\.jar/) { jar ->
                     localRuntime files(jar)
                 }
             }

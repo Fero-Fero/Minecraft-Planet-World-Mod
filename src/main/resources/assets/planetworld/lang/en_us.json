@@ -21,10 +21,10 @@
   "planetworld.customize.curvature": "Curvature Shader",
   "planetworld.customize.world_gen_style": "World Generation",
   "planetworld.customize.world_gen_style.normal": "Normal",
-  "planetworld.customize.world_gen_style.continental": "Continental",
-  "planetworld.customize.continental_requires": "Continental requires circumference ≥ %s",
+  "planetworld.customize.world_gen_style.realism": "Realism",
+  "planetworld.customize.realism_requires": "Realism requires circumference ≥ %s",
   "planetworld.customize.localized_time": "Localized Time",
   "planetworld.customize.localized_weather": "Localized Weather",
   "planetworld.customize.invalid": "Invalid settings",
-  "planetworld.customize.world_gen_style.continental.tooltip": "Large continents, wide oceans, north(-Z) cold / south(+Z) tropical. At 4096+: every overworld biome once, stronghold + woodland mansion."
+  "planetworld.customize.world_gen_style.realism.tooltip": "Earth-like climate: cold north (−Z), hot south (+Z), large landmasses and oceans. At 2048+: every overworld biome once, stronghold + woodland mansion. Torus wrap stays seamless."
 }

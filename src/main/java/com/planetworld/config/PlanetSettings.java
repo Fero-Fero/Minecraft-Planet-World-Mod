@@ -17,8 +17,11 @@ public record PlanetSettings(
 ) {
     public static final int MIN_CIRCUMFERENCE = 256;
     public static final int MAX_CIRCUMFERENCE = 102_400;
-    /** Continental climate is only offered at or above this half-period size. */
-    public static final int MIN_CONTINENTAL_CIRCUMFERENCE = 2048;
+    /** Realism climate is only offered at or above this half-period size. */
+    public static final int MIN_REALISM_CIRCUMFERENCE = 2048;
+    /** @deprecated Use {@link #MIN_REALISM_CIRCUMFERENCE}. */
+    @Deprecated
+    public static final int MIN_CONTINENTAL_CIRCUMFERENCE = MIN_REALISM_CIRCUMFERENCE;
 
     /** Discrete slider steps: 256, 512, … 65536, then 102400. */
     public static final int[] CIRCUMFERENCE_STEPS = {
@@ -28,7 +31,7 @@ public record PlanetSettings(
     public PlanetSettings {
         circumference = snapCircumference(circumference);
         worldGenStyle = worldGenStyle == null ? WorldGenStyle.NORMAL : worldGenStyle;
-        if (circumference < MIN_CONTINENTAL_CIRCUMFERENCE) {
+        if (circumference < MIN_REALISM_CIRCUMFERENCE) {
             worldGenStyle = WorldGenStyle.NORMAL;
         }
         // Persist the auto-derived intensity so NBT/config stay consistent with runtime.
@@ -51,12 +54,24 @@ public record PlanetSettings(
         return (float) (100.0 * drop / distance);
     }
 
-    public boolean allowsContinental() {
-        return circumference >= MIN_CONTINENTAL_CIRCUMFERENCE;
+    public boolean allowsRealism() {
+        return circumference >= MIN_REALISM_CIRCUMFERENCE;
     }
 
+    /** @deprecated Use {@link #allowsRealism()}. */
+    @Deprecated
+    public boolean allowsContinental() {
+        return allowsRealism();
+    }
+
+    public boolean isRealism() {
+        return worldGenStyle == WorldGenStyle.REALISM && allowsRealism();
+    }
+
+    /** @deprecated Use {@link #isRealism()}. */
+    @Deprecated
     public boolean isContinental() {
-        return worldGenStyle == WorldGenStyle.CONTINENTAL && allowsContinental();
+        return isRealism();
     }
 
     /** Snap to the nearest allowed circumference step. */

@@ -39,6 +39,14 @@ public final class PlanetWorldConfig {
             .comment("Reserved legacy toggle (no border teleport). Kept for per-world settings compatibility.")
             .define("enable_entity_wrap", DEFAULT_ENTITY_WRAP);
 
+    public static final ModConfigSpec.BooleanValue ENABLE_TERRALITH_SEEDS = BUILDER
+            .comment("When Terralith is installed: place sparse Terralith surface biome seeds on Realism worlds (circumference ≥2048).")
+            .define("enable_terralith_seeds", true);
+
+    public static final ModConfigSpec.BooleanValue INCLUDE_FANTASY_TERRALITH_BIOMES = BUILDER
+            .comment("When Terralith seeds are enabled: include fantasy / skylands / magical biomes in the seed catalog.")
+            .define("include_fantasy_terralith_biomes", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private PlanetWorldConfig() {
@@ -77,8 +85,14 @@ public final class PlanetWorldConfig {
         return PlanetSettingsAccess.get().worldGenStyle();
     }
 
+    public static boolean isRealism() {
+        return PlanetSettingsAccess.get().isRealism();
+    }
+
+    /** @deprecated Use {@link #isRealism()}. */
+    @Deprecated
     public static boolean isContinental() {
-        return PlanetSettingsAccess.get().isContinental();
+        return isRealism();
     }
 
     public static boolean enableLocalizedTime() {
@@ -91,5 +105,13 @@ public final class PlanetWorldConfig {
 
     public static boolean enableEntityWrap() {
         return PlanetSettingsAccess.get().entityWrap();
+    }
+
+    public static boolean enableTerralithSeeds() {
+        return !configLoaded() || ENABLE_TERRALITH_SEEDS.get();
+    }
+
+    public static boolean includeFantasyTerralithBiomes() {
+        return !configLoaded() || INCLUDE_FANTASY_TERRALITH_BIOMES.get();
     }
 }

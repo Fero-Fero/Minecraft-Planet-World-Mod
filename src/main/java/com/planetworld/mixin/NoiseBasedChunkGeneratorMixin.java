@@ -17,8 +17,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Continents mode (>=2048): swap overworld noise settings to vanilla LARGE_BIOMES
- * for stretched climate / larger landmasses. Does not touch wrap mixins.
+ * Realism mode: swap overworld noise settings to vanilla LARGE_BIOMES
+ * for stretched climate / larger landmasses. Terralith 2.6+ supports Large Biomes;
+ * does not touch wrap mixins.
  */
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorMixin {
@@ -31,7 +32,7 @@ public abstract class NoiseBasedChunkGeneratorMixin {
 			Holder<NoiseGeneratorSettings> settingsIn,
 			CallbackInfo ci
 	) {
-		if (!PlanetWorldConfig.isContinental()) {
+		if (!PlanetWorldConfig.isRealism()) {
 			return;
 		}
 		if (!settingsIn.is(NoiseGeneratorSettings.OVERWORLD)) {

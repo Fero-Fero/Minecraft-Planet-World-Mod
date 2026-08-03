@@ -18,7 +18,7 @@ public final class ContinentalClimate {
 	 * Continents at/above this UI circumference get sparse one-of-each biome seeds
 	 * plus structure spacing scaled into the wrap (mansions, strongholds, etc.).
 	 */
-	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE;
+	public static final int MIN_FULL_COVERAGE_CIRCUMFERENCE = PlanetSettings.MIN_REALISM_CIRCUMFERENCE;
 
 	/** How strongly signed latitude overrides vanilla temperature. */
 	private static final float TEMP_BLEND = 0.85f;
@@ -33,11 +33,11 @@ public final class ContinentalClimate {
 	}
 
 	public static boolean shouldRemap() {
-		return PlanetWorldConfig.isContinental();
+		return PlanetWorldConfig.isRealism();
 	}
 
 	public static boolean shouldSeedBiomes() {
-		return PlanetWorldConfig.isContinental()
+		return PlanetWorldConfig.isRealism()
 				&& PlanetWorldConfig.planetCircumference() >= MIN_FULL_COVERAGE_CIRCUMFERENCE;
 	}
 

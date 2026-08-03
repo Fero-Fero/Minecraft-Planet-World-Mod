@@ -42,15 +42,15 @@ public class WrappedWorldCustomizeScreen extends Screen {
 
         y += 72;
         this.worldGenStyleButton = CycleButton.builder(this::styleLabel)
-                .withValues(WorldGenStyle.NORMAL, WorldGenStyle.CONTINENTAL)
+                .withValues(WorldGenStyle.NORMAL, WorldGenStyle.REALISM)
                 .withInitialValue(this.settings.worldGenStyle())
                 .create(centerX - 110, y, 220, 20,
                         Component.translatable("planetworld.customize.world_gen_style"),
                         (b, value) -> {
-                            if (value == WorldGenStyle.CONTINENTAL && !currentAllowsContinental()) {
+                            if (value == WorldGenStyle.REALISM && !currentAllowsRealism()) {
                                 this.status = Component.translatable(
-                                        "planetworld.customize.continental_requires",
-                                        PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE);
+                                        "planetworld.customize.realism_requires",
+                                        PlanetSettings.MIN_REALISM_CIRCUMFERENCE);
                                 b.setValue(WorldGenStyle.NORMAL);
                                 this.settings = this.settings.withWorldGenStyle(WorldGenStyle.NORMAL);
                                 return;
@@ -89,18 +89,18 @@ public class WrappedWorldCustomizeScreen extends Screen {
         return Component.translatable("planetworld.customize.world_gen_style." + style.name().toLowerCase());
     }
 
-    private boolean currentAllowsContinental() {
+    private boolean currentAllowsRealism() {
         int circumference = PlanetSettings.CIRCUMFERENCE_STEPS[this.circumferenceStepIndex];
-        return circumference >= PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE;
+        return circumference >= PlanetSettings.MIN_REALISM_CIRCUMFERENCE;
     }
 
     private void refreshWorldGenStyleActive() {
         if (this.worldGenStyleButton == null) {
             return;
         }
-        boolean allow = currentAllowsContinental();
+        boolean allow = currentAllowsRealism();
         this.worldGenStyleButton.active = true;
-        if (!allow && this.settings.worldGenStyle() == WorldGenStyle.CONTINENTAL) {
+        if (!allow && this.settings.worldGenStyle() == WorldGenStyle.REALISM) {
             this.settings = this.settings.withWorldGenStyle(WorldGenStyle.NORMAL);
             this.worldGenStyleButton.setValue(WorldGenStyle.NORMAL);
         }
@@ -109,7 +109,7 @@ public class WrappedWorldCustomizeScreen extends Screen {
     private void onDone() {
         int circumference = PlanetSettings.CIRCUMFERENCE_STEPS[this.circumferenceStepIndex];
         WorldGenStyle style = this.settings.worldGenStyle();
-        if (circumference < PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE) {
+        if (circumference < PlanetSettings.MIN_REALISM_CIRCUMFERENCE) {
             style = WorldGenStyle.NORMAL;
         }
         this.settings = this.settings
@@ -150,10 +150,10 @@ public class WrappedWorldCustomizeScreen extends Screen {
                         String.format("%.1f", pct)),
                 centerX, 100, 0xA0A0A0);
 
-        if (!currentAllowsContinental()) {
+        if (!currentAllowsRealism()) {
             graphics.drawCenteredString(this.font, Component.translatable(
-                            "planetworld.customize.continental_requires",
-                            PlanetSettings.MIN_CONTINENTAL_CIRCUMFERENCE),
+                            "planetworld.customize.realism_requires",
+                            PlanetSettings.MIN_REALISM_CIRCUMFERENCE),
                     centerX, 112, 0x808080);
         }
 

@@ -5,6 +5,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.planetworld.worldgen.ContinentalClimate;
 import com.planetworld.worldgen.GuaranteedStructures;
 import com.planetworld.worldgen.OverworldBiomeSeedPlacer;
+import com.planetworld.worldgen.terralith.TerralithBiomeSeedPlacer;
+import com.planetworld.worldgen.terralith.TerralithCompat;
 import com.planetworld.wrap.processing.worldgen.OpenSimplex2S;
 import com.planetworld.wrap.storage.TransformerRequests;
 import net.minecraft.core.Holder;
@@ -15,12 +17,11 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 /**
- * Continents: landmask + signed N/S climate; sparse biome seeds; bamboo dampening.
+ * Realism: landmask + signed N/S climate; sparse vanilla + Terralith biome seeds; bamboo dampening.
  */
 @Mixin(MultiNoiseBiomeSource.class)
 public abstract class MultiNoiseBiomeSourceMixin {
@@ -39,7 +40,7 @@ public abstract class MultiNoiseBiomeSourceMixin {
 			return original.call(quartX, quartY, quartZ, sampler);
 		}
 		MultiNoiseBiomeSource self = (MultiNoiseBiomeSource) (Object) this;
-		if (!self.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) {
+		if (!TerralithCompat.isRemappableOverworldSource(self)) {
 			return original.call(quartX, quartY, quartZ, sampler);
 		}
 
@@ -57,6 +58,11 @@ public abstract class MultiNoiseBiomeSourceMixin {
 		Holder<Biome> seeded = OverworldBiomeSeedPlacer.biomeAt(blockX, blockZ);
 		if (seeded != null) {
 			return seeded;
+		}
+
+		Holder<Biome> terralithSeeded = TerralithBiomeSeedPlacer.biomeAt(blockX, blockZ);
+		if (terralithSeeded != null) {
+			return terralithSeeded;
 		}
 
 		Climate.TargetPoint point = sampler.sample(quartX, quartY, quartZ);

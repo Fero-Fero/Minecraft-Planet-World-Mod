@@ -172,9 +172,9 @@ public final class PlanetSettingsLifecycle {
 		}
 
 		PlanetWorld.LOGGER.info(
-				"Active planet settings: style={}, continental={}, circumference={}",
+				"Active planet settings: style={}, realism={}, circumference={}",
 				data.getSettings().worldGenStyle(),
-				data.getSettings().isContinental(),
+				data.getSettings().isRealism(),
 				data.getSettings().circumference()
 		);
 	}

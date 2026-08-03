@@ -36,12 +36,14 @@ gradlew.bat check
 | **Create 6.0.10** | Soft dependency |
 | **Sable 2.0.x** | Soft dependency |
 | **Create Aeronautics (bundled)** | WIP |
+| **Terralith 2.5+** | Soft dependency | Realism (≥2048): climate remap feeds Terralith biomes; sparse wrap-safe surface seeds. Fantasy/skylands toggleable in config. |
 
 Dev runtime flags:
 
 ```bat
 gradlew.bat runServer -PwithCreateRuntime
 gradlew.bat runClient -PwithSableRuntime -PwithAeronauticsRuntime
+gradlew.bat runClient -PwithTerralithRuntime
 ```
 ## World type
 
