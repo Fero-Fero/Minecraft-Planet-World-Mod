@@ -90,6 +90,17 @@ public final class SeasonAuthority {
 		return warmthFromProgress(localSeasonProgress(level, blockZ));
 	}
 
+	/**
+	 * Warmth in {@code [-1,1]} at an explicit latitude (south {@code lat > 0} is opposite season).
+	 * Prefer this with {@link com.planetworld.render.ContinuousMeridian} latitude so polar
+	 * wrap crossings do not flip summer↔winter atmosphere.
+	 */
+	public static float warmthAtLatitude(Level level, double latitude) {
+		float north = northernSeasonProgress(level);
+		float progress = latitude > 0.0 ? (north + 0.5f) % 1.0f : north;
+		return warmthFromProgress(progress);
+	}
+
 	/** Northern-hemisphere warmth (+1 midsummer, −1 midwinter). */
 	public static float northernWarmth(Level level) {
 		return warmthFromProgress(northernSeasonProgress(level));

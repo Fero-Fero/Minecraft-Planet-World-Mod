@@ -83,7 +83,7 @@ public abstract class LevelRendererMixin {
 		}
 	}
 
-	/** Scale only the sun quad half-extent (vanilla 30); moon stays 20. */
+	/** Scale sun quad (vanilla 30) — 50% default × season. */
 	@ModifyConstant(
 			method = "renderSky",
 			constant = @Constant(floatValue = 30.0F),
@@ -100,5 +100,20 @@ public abstract class LevelRendererMixin {
 	)
 	private float planetworld$seasonSunSize(float original) {
 		return original * LocalSkyHandler.seasonSunScale();
+	}
+
+	/** Scale moon quad (vanilla 20) — 50% default. */
+	@ModifyConstant(
+			method = "renderSky",
+			constant = @Constant(floatValue = 20.0F),
+			slice = @Slice(
+					from = @At(
+							value = "FIELD",
+							target = "Lnet/minecraft/client/renderer/LevelRenderer;MOON_LOCATION:Lnet/minecraft/resources/ResourceLocation;"
+					)
+			)
+	)
+	private float planetworld$moonSize(float original) {
+		return original * LocalSkyHandler.moonDiscScale();
 	}
 }
