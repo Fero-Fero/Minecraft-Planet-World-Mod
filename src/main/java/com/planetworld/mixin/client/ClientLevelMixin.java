@@ -11,8 +11,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Client sky / sun / moon use observer local angle (X longitude + meridian longitude).
- * Latitude tip is applied separately in {@code LevelRendererMixin}.
+ * Sun/moon disc spin uses the longitude-local clock (world dayTime ± X).
+ * Tip is applied in {@link LevelRendererMixin}; sky darken / color / stars use
+ * tip-aware exposure via {@link ClientLevelLightingMixin}.
  */
 @Mixin(LevelTimeAccess.class)
 public interface ClientLevelMixin {

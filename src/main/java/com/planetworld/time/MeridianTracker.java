@@ -10,9 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Full wrap period {@code P = 2C} (UI size {@code C}) is one meridian loop:
  * poles at {@code P/4}, far equator at {@code P/2}, home at {@code P}.
- * Sky tip uses folded {@link #latitude} (overhead at both equators) so a 180° tip
- * does not fight meridian-longitude opposite day. Continuous {@link #tipTurns} still
- * drives observer longitude ({@code × ¼} day) and unwrapped travel past the seam.
+ * Sky tip uses unwrapped {@link #tipTurns} (quarter units) so N/S travel rotates
+ * continuously. {@link #latitude} is the triangle fold for climate / polar gameplay.
+ * Do not shift θ by far-face antipode — that fights continuous tip at ~180°.
  */
 public final class MeridianTracker {
 	/** Client local-player track when UUID is not yet convenient. */
@@ -77,8 +77,8 @@ public final class MeridianTracker {
 	/**
 	 * Unwrapped meridian progress in quarter-period units (…, −1, 0, 1, 2, …).
 	 * Quarter = {@code C/2}: pole at 1 ({@code Z=C/2}), far equator at 2 ({@code Z=C}),
-	 * home at 4 ({@code Z=2C=P}). Sky tip = {@code +tipTurns × 90°};
-	 * observer longitude += {@code tipTurns × ¼} day.
+	 * home at 4 ({@code Z=2C=P}). Sky tip = {@code +tipTurns × 90°}.
+	 * Far-face day uses tip altitude / ~180° tip — not {@code tipTurns × ¼} on θ.
 	 */
 	public static double tipTurns(double continuousZ, double quarterPeriod) {
 		if (!(quarterPeriod > 1.0e-3)) {

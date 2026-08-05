@@ -24,7 +24,7 @@ public abstract class DaylightDetectorBlockMixin {
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
             return original.call(level, partialTick);
         }
-        return LocalTime.celestialAngle(level, pos.getX(), pos.getZ()) * ((float) Math.PI * 2f);
+        return LocalTime.lightingCelestialAngle(level, pos.getX(), pos.getZ()) * ((float) Math.PI * 2f);
     }
 
     @WrapOperation(
@@ -36,7 +36,7 @@ public abstract class DaylightDetectorBlockMixin {
         if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
             return original.call(level);
         }
-        double brightness = Mth.clamp(Math.cos(LocalTime.celestialAngle(level, pos.getX(), pos.getZ()) * Math.PI * 2.0) * 2.0 + 0.5, 0.0, 1.0);
-        return (int) ((1.0 - brightness) * 11.0);
+        float brightness = LocalTime.sunExposure(level, pos.getX(), pos.getZ());
+        return (int) ((1.0 - Mth.clamp(brightness, 0.0f, 1.0f)) * 11.0);
     }
 }

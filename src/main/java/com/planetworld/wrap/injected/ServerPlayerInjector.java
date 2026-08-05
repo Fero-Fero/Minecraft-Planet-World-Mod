@@ -20,4 +20,12 @@ public interface ServerPlayerInjector {
 
 	default void setClientX(double clientX) {};
 	default void setClientZ(double clientZ) {};
+
+	/** Mark continuous client X/Z as unset so the next read picks up the live player position. */
+	default void invalidateClientPos() {};
+
+	default void setClientPos(double clientX, double clientZ) {
+		setClientX(clientX);
+		setClientZ(clientZ);
+	}
 }

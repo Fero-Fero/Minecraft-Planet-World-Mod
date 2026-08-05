@@ -17,8 +17,8 @@ import net.minecraft.world.level.dimension.DimensionType;
  * Spatial time / sky authority for a globe-like wrapped Overworld:
  * <ul>
  *   <li>Longitude (X): east/west time zones on the fixed solar ring.</li>
- *   <li>Meridian (Z): continuous viewpoint tip + observer-longitude as you walk
- *       over poles (far face at {@code C = P/2} is opposite day; home again at {@code P}).</li>
+ *   <li>Meridian (Z): continuous viewpoint tip (full rotations around the globe).</li>
+ *   <li>Far-face day: tip ~180° + altitude proxy — never a hard +½ day on θ.</li>
  *   <li>Orbital obliquity: fixed ~{@link #ORBITAL_OBLIQUITY_DEGREES}° lean of the shared ring.</li>
  * </ul>
  * Planet-fixed sun stays on one ring from shared {@code dayTime}. Walking only changes
@@ -40,8 +40,8 @@ public final class LocalTime {
 	public static final float POLE_TIP_DEGREES = 90.0f;
 
 	/**
-	 * Observer-longitude advance per tip turn, as a fraction of the day.
-	 * {@code tipTurns = 2} (far equator, {@code Z = C = P/2}) → +½ day.
+	 * Observer-longitude advance per tip turn (fraction of a day). Reserved for experiments;
+	 * sky θ uses X longitude only — far-face day is continuous tip + altitude, not +½ on θ.
 	 */
 	public static final float MERIDIAN_LONGITUDE_PER_TURN = 0.25f;
 
@@ -94,18 +94,13 @@ public final class LocalTime {
 	}
 
 	/**
-	 * Observer solar ticks: world clock + X longitude + continuous meridian longitude.
-	 * Meridian offset is {@code tipTurns × ¼ day} so {@code Z = C} (far equator) is
-	 * opposite day to {@code Z = 0}, and {@code Z = 2C = P} matches home again.
+	 * Observer solar ticks: world clock + X longitude only.
+	 * Meridian does not shift θ — far-face opposite day comes from continuous sky tip
+	 * (~180° at {@code Z=C}) and {@link #sunExposureAt} altitude, not a +½ day on the beads.
+	 * {@code continuousZ} is kept for call-site compatibility.
 	 */
 	public static long observerLocalTimeTicks(Level level, double x, double continuousZ) {
-		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
-			return globalTime(level);
-		}
-		long ticks = localTime(level, x);
-		double tipTurns = MeridianTracker.tipTurnsForPeriod(continuousZ, periodBlocksZ(level));
-		long meridianOffset = Math.round(tipTurns * MERIDIAN_LONGITUDE_PER_TURN * (double) DAY_LENGTH);
-		return Math.floorMod(ticks + meridianOffset, DAY_LENGTH);
+		return localTime(level, x);
 	}
 
 	public static long observerLocalTimeTicks(Entity entity) {
@@ -248,8 +243,9 @@ public final class LocalTime {
 	}
 
 	/**
-	 * Day/night from observer angle (X + meridian longitude) attenuated toward the horizon
-	 * at the poles. Far equator ({@code tipTurns = 2}, {@code Z = C}) is opposite day to home.
+	 * Day/night from longitude day curve × continuous tip altitude.
+	 * {@code cos(tipTurns·π/2)} is signed: 1 at near equator, 0 at poles, −1 at far equator
+	 * (opposite day) — without shifting orbital phase θ.
 	 */
 	public static float sunExposureAt(Level level, double x, double continuousZ) {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
@@ -258,10 +254,9 @@ public final class LocalTime {
 		double period = periodBlocksZ(level);
 		double quarter = MeridianTracker.quarterPeriod(period);
 		double tipTurns = MeridianTracker.tipTurns(continuousZ, quarter);
-		float dayCurve = brightnessFromTicks(observerLocalTimeTicks(level, x, continuousZ));
+		float dayCurve = brightnessFromTicks(localTime(level, x));
 		float spin = dayCurve * 2.0f - 1.0f;
-		// |cos|: 1 at both equators, 0 at poles (ring on horizon).
-		float altitude = (float) Math.abs(Math.cos(tipTurns * Math.PI * 0.5));
+		float altitude = (float) Math.cos(tipTurns * Math.PI * 0.5);
 		float equatorial = 0.5f + 0.5f * spin * altitude;
 
 		double lat = MeridianTracker.latitude(continuousZ, quarter);
@@ -375,6 +370,21 @@ public final class LocalTime {
 		return level.getBrightness(LightLayer.BLOCK, lightPos) < GROWTH_LIGHT_LEVEL;
 	}
 
+	/**
+	 * Map tip-aware sun strength to a celestial angle 0..1 whose vanilla
+	 * {@code cos(θ·2π)} brightness matches {@code exposure} (noon↔1, midnight↔0).
+	 * For sky lighting / detectors — not for sun/moon disc spin.
+	 */
+	public static float lightingCelestialAngleFromExposure(float exposure) {
+		float c = Mth.clamp(exposure * 2.0f - 1.0f, -1.0f, 1.0f);
+		return (float) (Math.acos(c) / (Math.PI * 2.0));
+	}
+
+	/** {@link #lightingCelestialAngleFromExposure} at block coordinates. */
+	public static float lightingCelestialAngle(Level level, double x, double z) {
+		return lightingCelestialAngleFromExposure(sunExposure(level, x, z));
+	}
+
 	/** Shared world celestial angle 0..1 from {@code dayTime} (no longitude offset). */
 	public static float worldCelestialAngle(Level level) {
 		return celestialAngleFromTicks(Math.floorMod(globalTime(level), DAY_LENGTH));
@@ -402,14 +412,19 @@ public final class LocalTime {
 	}
 
 	/**
-	 * Sky tip from folded geographic latitude (triangle). Tip returns to ~0° at both
-	 * equators so meridian-longitude +½ day can put the far face in opposite day
-	 * without a 180° tip double-flip.
-	 * <p>
-	 * On the far face, tip sign is inverted: local solar longitude is already shifted
-	 * by ~½ day, so the same tip sign would lower the sun the wrong way in the sky
-	 * (e.g. walking from far equator {@code Z=-C} toward the north pole {@code Z=-C/2}).
-	 * Applied around pose-stack Z after {@code YP(-90)} and before {@code XP(time)}.
+	 * Sky tip from unwrapped meridian progress (quarter-period units).
+	 * Advances continuously so N/S travel does not pendulum-fold the path:
+	 * {@code 0 → 90° → 180° → 270° → 360°} over a full meridian loop.
+	 * <ul>
+	 *   <li>{@code tipTurns = 0} ({@code Z=0}): near equator</li>
+	 *   <li>{@code 1} ({@code Z=C/2}): south pole — ring on horizon</li>
+	 *   <li>{@code 2} ({@code Z=C}): far equator — tip ~180° (other face)</li>
+	 *   <li>{@code 3} ({@code Z=3C/2}): north pole</li>
+	 *   <li>{@code 4} ({@code Z=2C=P}): home</li>
+	 * </ul>
+	 * Day phase uses meridian-longitude separately ({@code tipTurns × ¼} via
+	 * {@link #observerLocalTimeTicks}). Do not also fold tip back to 0 at the far
+	 * equator — that reintroduces the pendulum and wrong lowering direction.
 	 *
 	 * @param quarterPeriod equator→pole distance ({@code P/4})
 	 */
@@ -417,12 +432,8 @@ public final class LocalTime {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
 			return 0.0f;
 		}
-		double lat = MeridianTracker.latitude(continuousZ, quarterPeriod);
-		float tip = (float) (lat * POLE_TIP_DEGREES);
-		if (MeridianTracker.onFarFace(continuousZ, quarterPeriod)) {
-			tip = -tip;
-		}
-		return tip + ORBITAL_OBLIQUITY_DEGREES;
+		float observerTip = (float) (MeridianTracker.tipTurns(continuousZ, quarterPeriod) * POLE_TIP_DEGREES);
+		return observerTip + ORBITAL_OBLIQUITY_DEGREES;
 	}
 
 	/**

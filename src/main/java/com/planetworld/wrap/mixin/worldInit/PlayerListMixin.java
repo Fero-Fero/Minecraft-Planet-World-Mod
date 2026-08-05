@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -44,12 +45,51 @@ public abstract class PlayerListMixin {
 	@Shadow private int simulationDistance;
 
 	/**
-	 * Initializes the player's client-side positioning so they can be used for unwrapping operations.
+	 * Continuous client X/Z must follow the <em>saved</em> position for chunk remaps.
+	 * {@code placeNewPlayer} HEAD runs <em>before</em> {@code load(player)}, so syncing
+	 * there locks spawn (often 0,0) and the client drops every remapped chunk (void).
+	 * Invalidate at HEAD; sync after NBT load (before chunk sends) and again at TAIL.
 	 */
+	@Inject(method = "placeNewPlayer", at = @At("HEAD"))
+	public void planetworld$clientPosHead(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
+		player.invalidateClientPos();
+	}
+
+	@Inject(
+			method = "placeNewPlayer",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/server/players/PlayerList;load(Lnet/minecraft/server/level/ServerPlayer;)Ljava/util/Optional;",
+					shift = At.Shift.AFTER
+			)
+	)
+	public void planetworld$clientPosAfterLoad(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
+		planetworld$syncClientPos(player);
+	}
+
 	@Inject(method = "placeNewPlayer", at = @At("TAIL"))
-	public void placeNewPlayer2(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
-		player.setClientX(player.getX());
-		player.setClientZ(player.getZ());
+	public void planetworld$clientPosTail(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
+		planetworld$syncClientPos(player);
+	}
+
+	@Unique
+	private static void planetworld$syncClientPos(ServerPlayer player) {
+		DimensionTransformer transformer = player.serverLevel().getTransformer();
+		double x = player.getX();
+		double z = player.getZ();
+		if (transformer != null && transformer.isWrapped()) {
+			// Pull slightly OOB saves back into the torus so seam logins still get neighbors.
+			if (transformer.Coord.X.isOver(x)) {
+				x = transformer.Coord.X.wrap(x);
+			}
+			if (transformer.Coord.Z.isOver(z)) {
+				z = transformer.Coord.Z.wrap(z);
+			}
+			if (x != player.getX() || z != player.getZ()) {
+				player.teleportTo(x, player.getY(), z);
+			}
+		}
+		player.setClientPos(player.getX(), player.getZ());
 	}
 
 	/**

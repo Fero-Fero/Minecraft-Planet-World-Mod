@@ -7,15 +7,15 @@ import com.planetworld.time.MeridianTracker;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Client sky: longitude + continuous meridian observer frame on a fixed orbital ring.
- * Folded latitude tips the path (horizon at poles, overhead at both equators).
- * Meridian-longitude ({@code tipTurns × ¼}) makes {@code Z = C} opposite day to home.
+ * Client sky: X-longitude day clock on a fixed ring, continuous meridian tip for N/S.
+ * Far equator uses tip ~180° (not a +½ day on θ) so beads never swap sun/moon roles.
  */
 @OnlyIn(Dist.CLIENT)
 public final class LocalSkyHandler {
@@ -26,8 +26,8 @@ public final class LocalSkyHandler {
 	}
 
 	/**
-	 * Observer day-cycle angle — world time ± X longitude ± continuous meridian longitude
-	 * ({@code tipTurns × ¼} so {@code Z = C} is opposite day to {@code Z = 0}).
+	 * Observer day-cycle angle for sun/moon disc spin — world time ± X only.
+	 * Far-face night is tip ~180° + {@link #localLightingCelestialAngle()}, not θ+½.
 	 */
 	public static float localCelestialAngle() {
 		Minecraft mc = Minecraft.getInstance();
@@ -39,7 +39,32 @@ public final class LocalSkyHandler {
 				|| !WrapMath.isWrappedDimension(mc.level)) {
 			return LocalTime.worldCelestialAngle(mc.level);
 		}
-		return LocalTime.observerCelestialAngle(mc.level, mc.player.getX(), continuousZ());
+		return LocalTime.celestialAngle(mc.level, mc.player.getX());
+	}
+
+	/**
+	 * Tip-aware sun strength (0..1) for the local player — drives fog / sky darken / stars
+	 * while disc spin stays on {@link #localCelestialAngle()}.
+	 */
+	public static float localSunExposure() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) {
+			return 1.0f;
+		}
+		if (mc.player == null
+				|| !PlanetWorldConfig.enableLocalizedTime()
+				|| !WrapMath.isWrappedDimension(mc.level)) {
+			return LocalTime.sunExposure(mc.level, 0.0, 0.0);
+		}
+		return LocalTime.sunExposure(mc.player);
+	}
+
+	/**
+	 * Celestial angle whose vanilla {@code cos(θ·2π)} brightness matches {@link #localSunExposure()}.
+	 * Used by sky color / darken / stars — not by disc {@code XP(time)}.
+	 */
+	public static float localLightingCelestialAngle() {
+		return LocalTime.lightingCelestialAngleFromExposure(localSunExposure());
 	}
 
 	public static float localCelestialTiltDegrees() {
@@ -123,8 +148,7 @@ public final class LocalSkyHandler {
 		if (mc.level == null || mc.player == null || !WrapMath.isWrappedDimension(mc.level)) {
 			return;
 		}
-		float angle = localCelestialAngle();
-		boolean night = angle > 0.25f && angle < 0.75f;
+		boolean night = localSunExposure() <= 0.18f;
 		if (night) {
 			event.setRed(event.getRed() * 0.35f);
 			event.setGreen(event.getGreen() * 0.35f);

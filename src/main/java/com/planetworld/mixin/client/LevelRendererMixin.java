@@ -26,8 +26,8 @@ import org.spongepowered.asm.mixin.injection.Slice;
  * <p>
  * Tip the polar axis (Z) <em>after</em> {@code YP(-90)} and <em>before</em>
  * {@code XP(time)} so the day cycle still spins the sun around a tipped axis.
- * Tip uses folded latitude (0 at both equators); far-face opposite day comes from
- * meridian-longitude in {@code getTimeOfDay}, not a 180° tip.
+ * Tip advances with unwrapped meridian progress (past ±90° onto the far face)
+ * so N/S travel does not pendulum-fold. Far-face opposite day is tip ~180°, not θ+½.
  */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
