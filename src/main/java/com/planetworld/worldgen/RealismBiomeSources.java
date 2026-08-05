@@ -16,8 +16,9 @@ import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 /**
  * Decides whether Realism climate remap may touch a multi-noise source.
  * <p>
- * Results are cached per source instance — Still Life / Blooming / Terralith lists
- * are large, and scanning {@code possibleBiomes()} on every quart sample stalls chunk gen.
+ * Lithosphere owns overworld {@code noise_settings}: never remappable while it is loaded.
+ * Results are cached per source instance — Blooming / Terralith lists are large, and
+ * scanning {@code possibleBiomes()} on every quart sample stalls chunk gen.
  */
 public final class RealismBiomeSources {
 	private static final Map<MultiNoiseBiomeSource, Boolean> CACHE =
@@ -57,11 +58,12 @@ public final class RealismBiomeSources {
 	}
 
 	private static boolean compute(MultiNoiseBiomeSource source) {
-		if (source.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) {
-			return true;
+		// Lithosphere replaces overworld noise_settings; PW landmask climate would
+		// desync biomes from its continents (Still Life → endless ocean parameter hits).
+		if (WorldgenPackIds.isLithosphereLoaded()) {
+			return false;
 		}
-		// Pack-owned overworld sources no longer report stable(OVERWORLD).
-		if (WorldgenPackIds.isStillLifeStackLoaded() && containsNamespace(source, "still_life")) {
+		if (source.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) {
 			return true;
 		}
 		if (WorldgenPackIds.isBloomingBiosphereLoaded()
@@ -70,9 +72,6 @@ public final class RealismBiomeSources {
 			return true;
 		}
 		if (TerralithCompat.isLoaded() && TerralithCompat.containsTerralithBiome(source)) {
-			return true;
-		}
-		if (WorldgenPackIds.isLithosphereLoaded() && containsNamespace(source, "lithosphere")) {
 			return true;
 		}
 		return false;

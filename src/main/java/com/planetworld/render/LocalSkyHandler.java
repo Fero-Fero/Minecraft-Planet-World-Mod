@@ -7,7 +7,6 @@ import com.planetworld.time.MeridianTracker;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -27,7 +26,7 @@ public final class LocalSkyHandler {
 
 	/**
 	 * Observer day-cycle angle for sun/moon disc spin — world time ± X only.
-	 * Far-face night is tip ~180° + {@link #localLightingCelestialAngle()}, not θ+½.
+	 * Far-face night lighting uses {@link #localLightingCelestialAngle()}, not θ+½ on the beads.
 	 */
 	public static float localCelestialAngle() {
 		Minecraft mc = Minecraft.getInstance();
@@ -43,8 +42,7 @@ public final class LocalSkyHandler {
 	}
 
 	/**
-	 * Tip-aware sun strength (0..1) for the local player — drives fog / sky darken / stars
-	 * while disc spin stays on {@link #localCelestialAngle()}.
+	 * Tip-aware sun strength (0..1) — matches whether the tipped sun is warming the observer.
 	 */
 	public static float localSunExposure() {
 		Minecraft mc = Minecraft.getInstance();
@@ -60,11 +58,34 @@ public final class LocalSkyHandler {
 	}
 
 	/**
-	 * Celestial angle whose vanilla {@code cos(θ·2π)} brightness matches {@link #localSunExposure()}.
-	 * Used by sky color / darken / stars — not by disc {@code XP(time)}.
+	 * Sky brightness clock: phase+shift for dawn/dusk, raised to match sun exposure when
+	 * the tipped sun is already up (e.g. far-face midnight at mid-meridian Z).
 	 */
 	public static float localLightingCelestialAngle() {
-		return LocalTime.lightingCelestialAngleFromExposure(localSunExposure());
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) {
+			return 0f;
+		}
+		if (mc.player == null
+				|| !PlanetWorldConfig.enableLocalizedTime()
+				|| !WrapMath.isWrappedDimension(mc.level)) {
+			return LocalTime.worldCelestialAngle(mc.level);
+		}
+		return LocalTime.skyLightingCelestialAngle(mc.player);
+	}
+
+	/** Day factor 0..1 for fog / ambient — max of phase clock and sun exposure. */
+	public static float localSkyDayFactor() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) {
+			return 1.0f;
+		}
+		if (mc.player == null
+				|| !PlanetWorldConfig.enableLocalizedTime()
+				|| !WrapMath.isWrappedDimension(mc.level)) {
+			return 1.0f;
+		}
+		return LocalTime.skyDayFactor(mc.player);
 	}
 
 	public static float localCelestialTiltDegrees() {
@@ -148,11 +169,12 @@ public final class LocalSkyHandler {
 		if (mc.level == null || mc.player == null || !WrapMath.isWrappedDimension(mc.level)) {
 			return;
 		}
-		boolean night = localSunExposure() <= 0.18f;
-		if (night) {
-			event.setRed(event.getRed() * 0.35f);
-			event.setGreen(event.getGreen() * 0.35f);
-			event.setBlue(event.getBlue() * 0.45f);
+		float night = 1.0f - localSkyDayFactor();
+		if (night > 0.01f) {
+			float dim = 1.0f - 0.65f * night;
+			event.setRed(event.getRed() * dim);
+			event.setGreen(event.getGreen() * dim);
+			event.setBlue(event.getBlue() * (1.0f - 0.55f * night));
 		}
 		float warmth = SeasonAuthority.warmthAtLatitude(mc.level, continuousLatitude());
 		if (warmth < -0.15f) {

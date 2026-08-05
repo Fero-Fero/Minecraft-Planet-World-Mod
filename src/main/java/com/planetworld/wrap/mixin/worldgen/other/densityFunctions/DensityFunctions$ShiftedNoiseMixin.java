@@ -4,8 +4,8 @@
 
 package com.planetworld.wrap.mixin.worldgen.other.densityFunctions;
 
-import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.storage.TransformerRequests;
+import com.planetworld.worldgen.ContinentalClimate;
 import com.planetworld.worldgen.ContinentalLandmask;
 import com.planetworld.worldgen.ContinentalMountains;
 import net.minecraft.core.Holder;
@@ -38,11 +38,11 @@ public class DensityFunctions$ShiftedNoiseMixin {
 		long seed = level != null ? level.getSeed() : 0L;
 		double x = context.blockX();
 		double z = context.blockZ();
-		if (PlanetWorldConfig.isContinental() && path.contains("continentalness")) {
+		if (ContinentalClimate.shouldOverrideTerrainNoise() && path.contains("continentalness")) {
 			cir.setReturnValue((double) ContinentalLandmask.continentalness(x, z, seed));
 			return;
 		}
-		if (PlanetWorldConfig.isContinental()) {
+		if (ContinentalClimate.shouldOverrideTerrainNoise()) {
 			float land = ContinentalLandmask.landFactor(x, z, seed);
 			float mountain = ContinentalMountains.mountainFactor(x, z, seed, land);
 			if (path.contains("ridge")) {

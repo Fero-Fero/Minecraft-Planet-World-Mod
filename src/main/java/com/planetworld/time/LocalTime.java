@@ -371,18 +371,80 @@ public final class LocalTime {
 	}
 
 	/**
-	 * Map tip-aware sun strength to a celestial angle 0..1 whose vanilla
-	 * {@code cos(θ·2π)} brightness matches {@code exposure} (noon↔1, midnight↔0).
-	 * For sky lighting / detectors — not for sun/moon disc spin.
+	 * Sky / ambient lighting clock (0..1) — not for sun/moon disc spin.
+	 * <p>
+	 * Uses the smooth X-local solar phase (vanilla dawn/dusk), then adds a tip-derived
+	 * half-day shift so the far equator is opposite day. Prefer
+	 * {@link #skyLightingCelestialAngleAt} for client sky brightness so mid-meridian
+	 * spots where the tipped sun is already up are not left in artificial dusk.
+	 */
+	public static float lightingCelestialAngleAt(Level level, double x, double continuousZ) {
+		float phase = celestialAngle(level, x);
+		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
+			return phase;
+		}
+		double period = periodBlocksZ(level);
+		double quarter = MeridianTracker.quarterPeriod(period);
+		double tipTurns = MeridianTracker.tipTurns(continuousZ, quarter);
+		// altitude +1 near equator, 0 at poles, −1 far equator → shift 0 … 0.25 … 0.5 day
+		float altitude = (float) Math.cos(tipTurns * Math.PI * 0.5);
+		float shift = 0.25f * (1.0f - altitude);
+		float lighting = phase + shift;
+		lighting -= (float) Math.floor(lighting);
+		return lighting;
+	}
+
+	/**
+	 * Map sun strength to a celestial angle whose vanilla {@code cos(θ·2π)} day factor
+	 * matches {@code exposure}. Used when tip-altitude says the sun is up more strongly
+	 * than the phase+shift clock (mid-meridian / far-face mismatch).
 	 */
 	public static float lightingCelestialAngleFromExposure(float exposure) {
 		float c = Mth.clamp(exposure * 2.0f - 1.0f, -1.0f, 1.0f);
 		return (float) (Math.acos(c) / (Math.PI * 2.0));
 	}
 
-	/** {@link #lightingCelestialAngleFromExposure} at block coordinates. */
+	private static float dayFactorFromAngle(float celestialAngle) {
+		return Mth.clamp((float) (Math.cos(celestialAngle * Math.PI * 2.0) * 2.0 + 0.5), 0.0f, 1.0f);
+	}
+
+	/**
+	 * Client sky clock: keep phase+shift for smooth dawn/dusk, but brighten to match
+	 * {@link #sunExposureAt} when the tipped sun is already above the horizon.
+	 */
+	public static float skyLightingCelestialAngleAt(Level level, double x, double continuousZ) {
+		float phaseLighting = lightingCelestialAngleAt(level, x, continuousZ);
+		float phaseDay = dayFactorFromAngle(phaseLighting);
+		float sunDay = sunExposureAt(level, x, continuousZ);
+		if (sunDay > phaseDay + 0.02f) {
+			return lightingCelestialAngleFromExposure(sunDay);
+		}
+		return phaseLighting;
+	}
+
+	public static float skyLightingCelestialAngle(Entity entity) {
+		return skyLightingCelestialAngleAt(entity.level(), entity.getX(), continuousZFor(entity));
+	}
+
+	/** Day factor 0..1 matching {@link #skyLightingCelestialAngleAt}. */
+	public static float skyDayFactorAt(Level level, double x, double continuousZ) {
+		return Math.max(dayFactorFromAngle(lightingCelestialAngleAt(level, x, continuousZ)), sunExposureAt(level, x, continuousZ));
+	}
+
+	public static float skyDayFactor(Entity entity) {
+		return skyDayFactorAt(entity.level(), entity.getX(), continuousZFor(entity));
+	}
+
+	/** Lighting clock at wrapped block Z (no path unwrap). Prefer entity continuous Z for movers. */
 	public static float lightingCelestialAngle(Level level, double x, double z) {
-		return lightingCelestialAngleFromExposure(sunExposure(level, x, z));
+		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
+			return celestialAngle(level, x);
+		}
+		return lightingCelestialAngleAt(level, x, wrapZ(level, z));
+	}
+
+	public static float lightingCelestialAngle(Entity entity) {
+		return lightingCelestialAngleAt(entity.level(), entity.getX(), continuousZFor(entity));
 	}
 
 	/** Shared world celestial angle 0..1 from {@code dayTime} (no longitude offset). */

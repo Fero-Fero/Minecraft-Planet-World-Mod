@@ -5,10 +5,13 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.planetworld.compat.SodiumCompat;
+import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.render.CurvatureRenderer;
 import com.planetworld.render.LocalSkyHandler;
+import com.planetworld.wrap.WrapMath;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
@@ -82,6 +85,26 @@ public abstract class LevelRendererMixin {
 					1.0f
 			)));
 		}
+	}
+
+	/**
+	 * Second {@code getTimeOfDay} in {@code renderSky} drives {@code XP(time)} disc spin.
+	 * Keep that on the X-only clock; atmosphere already uses tip-aware time via
+	 * {@link ClientLevelMixin}.
+	 */
+	@WrapOperation(
+			method = "renderSky",
+			at = @At(
+					value = "INVOKE",
+					target = "Lnet/minecraft/client/multiplayer/ClientLevel;getTimeOfDay(F)F",
+					ordinal = 1
+			)
+	)
+	private float planetworld$discSpinTimeOfDay(ClientLevel level, float partialTick, Operation<Float> original) {
+		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(level)) {
+			return original.call(level, partialTick);
+		}
+		return LocalSkyHandler.localCelestialAngle();
 	}
 
 	/** Scale sun quad (vanilla 30) — 50% default × season. */

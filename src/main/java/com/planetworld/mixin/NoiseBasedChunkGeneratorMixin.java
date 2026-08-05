@@ -1,6 +1,5 @@
 package com.planetworld.mixin;
 
-import com.planetworld.config.PlanetWorldConfig;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.server.MinecraftServer;
@@ -16,10 +15,15 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.planetworld.worldgen.ContinentalClimate;
+
 /**
  * Realism mode: swap overworld noise settings to vanilla LARGE_BIOMES
  * for stretched climate / larger landmasses. Terralith 2.6+ supports Large Biomes;
  * does not touch wrap mixins.
+ * <p>
+ * Skipped when Lithosphere is loaded — it owns {@code noise_settings}; swapping to
+ * LARGE_BIOMES would discard its terrain graph.
  */
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorMixin {
@@ -32,7 +36,7 @@ public abstract class NoiseBasedChunkGeneratorMixin {
 			Holder<NoiseGeneratorSettings> settingsIn,
 			CallbackInfo ci
 	) {
-		if (!PlanetWorldConfig.isRealism()) {
+		if (!ContinentalClimate.shouldOverrideTerrainNoise()) {
 			return;
 		}
 		if (!settingsIn.is(NoiseGeneratorSettings.OVERWORLD)) {

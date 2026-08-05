@@ -4,8 +4,8 @@
 
 package com.planetworld.wrap.mixin.worldgen.other.densityFunctions;
 
-import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.wrap.storage.TransformerRequests;
+import com.planetworld.worldgen.ContinentalClimate;
 import com.planetworld.worldgen.ContinentalLandmask;
 import com.planetworld.worldgen.ContinentalMountains;
 import net.minecraft.core.Holder;
@@ -30,7 +30,7 @@ public class DensityFunctions$NoiseMixin {
 		if (!TransformerRequests.useWrappedWorldGen()) {
 			return;
 		}
-		if (PlanetWorldConfig.isContinental() && applyContinentalDensity(context, cir)) {
+		if (ContinentalClimate.shouldOverrideTerrainNoise() && applyContinentalDensity(context, cir)) {
 			return;
 		}
 		cir.setReturnValue(this.noise.getValue(context.blockX(), (double) context.blockY() * this.yScale, context.blockZ()));

@@ -38,7 +38,7 @@ gradlew.bat check
 | **Create Aeronautics (bundled)** | WIP |
 | **Terralith 2.5+** | Soft dependency | Realism (≥2048): climate remap feeds Terralith biomes; sparse wrap-safe surface seeds at C≥8192. Fantasy/skylands toggleable in config. |
 | **Serene Seasons** | Soft dependency | SeasonAuthority reads SS when present; else 5-day half-year. Hemisphere-aware sun/polar hazards; does not replace SS crop/snow. |
-| **Still Life + Lithosphere** | Soft dependency | Customize pack option when both loaded (exclusive with Terralith). Seed catalog TBD. |
+| **Still Life + Lithosphere** | Soft dependency | Customize pack option when both loaded (exclusive with Terralith). Lithosphere keeps its terrain (PW Realism landmask disabled). Seed catalog TBD. |
 | **Blooming Biosphere** | Soft dependency | Customize pack option when exclusive of Terralith/Still Life. Seed catalog TBD. |
 | **Farmer's Delight** | Soft dependency | Cold farmland also reverts rich soil farmland (crops drop). |
 | **Sodium** | Soft dependency | Toast cleared via `pack.mcmeta` `ignored_shaders`. Horizon curvature **degrades** (flat) under Sodium; wrap / local time / weather still work. SCSS backend TBD. |

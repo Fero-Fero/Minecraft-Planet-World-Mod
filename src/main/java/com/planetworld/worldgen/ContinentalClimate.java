@@ -2,10 +2,12 @@ package com.planetworld.worldgen;
 
 import com.planetworld.config.PlanetSettings;
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.config.WorldgenPackChoice;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
 import com.planetworld.wrap.processing.worldgen.OpenSimplex2S;
 import com.planetworld.wrap.storage.TransformerRequests;
+import com.planetworld.worldgen.compat.WorldgenPackIds;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.biome.Climate;
@@ -36,9 +38,23 @@ public final class ContinentalClimate {
 		return PlanetWorldConfig.isRealism();
 	}
 
+	/**
+	 * Realism landmask / mountain density and the LARGE_BIOMES noise swap.
+	 * Lithosphere replaces overworld {@code noise_settings}; applying our continental
+	 * density on top yields endless ocean with needle spikes.
+	 */
+	public static boolean shouldOverrideTerrainNoise() {
+		return shouldRemap() && !WorldgenPackIds.isLithosphereLoaded();
+	}
+
 	public static boolean shouldSeedBiomes() {
-		return PlanetWorldConfig.isRealism()
-				&& PlanetWorldConfig.planetCircumference() >= MIN_FULL_COVERAGE_CIRCUMFERENCE;
+		if (!PlanetWorldConfig.isRealism()
+				|| PlanetWorldConfig.planetCircumference() < MIN_FULL_COVERAGE_CIRCUMFERENCE) {
+			return false;
+		}
+		// Still Life / Blooming replace the overworld biome list — vanilla seeds clash.
+		WorldgenPackChoice pack = PlanetWorldConfig.worldgenPackChoice();
+		return pack == WorldgenPackChoice.VANILLA || pack == WorldgenPackChoice.TERRALITH;
 	}
 
 	/** Full coverage ≥8192: scale rare structure spacing into the wrap. */
