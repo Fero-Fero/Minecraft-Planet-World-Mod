@@ -14,9 +14,10 @@ import net.minecraft.world.level.Level;
  *   <li>Serene Seasons when present — continuous {@code cycleTicks / year} (default 96 days).</li>
  *   <li>Else continuous fallback year of {@link #FALLBACK_YEAR_DAYS} (10 days = 5-day half-year).</li>
  * </ul>
- * Northern midsummer tilts the sun {@link #MAX_AXIAL_TILT_DEGREES}° toward the north;
- * midwinter the same amount toward the south. Motion is a smooth cosine — no teleports.
- * Installing SS later picks up on the next progress read (world load / tick).
+ * Warmth / progress drive fog, crops, and polar day rules. Orbital plane lean for the
+ * sky is the fixed {@code LocalTime.ORBITAL_OBLIQUITY_DEGREES} (not this ±10° knob).
+ * Motion is a smooth cosine — no teleports. Installing SS later picks up on the next
+ * progress read (world load / tick).
  */
 public final class SeasonAuthority {
 	/** Days per half-year when SS is absent (summer↔winter one way). */
@@ -92,7 +93,7 @@ public final class SeasonAuthority {
 
 	/**
 	 * Warmth in {@code [-1,1]} at an explicit latitude (south {@code lat > 0} is opposite season).
-	 * Prefer this with {@link com.planetworld.render.ContinuousMeridian} latitude so polar
+	 * Prefer this with {@link com.planetworld.time.MeridianTracker} latitude so polar
 	 * wrap crossings do not flip summer↔winter atmosphere.
 	 */
 	public static float warmthAtLatitude(Level level, double latitude) {
@@ -145,21 +146,41 @@ public final class SeasonAuthority {
 		return northernWarmth(level) * MAX_AXIAL_TILT_DEGREES;
 	}
 
+	/**
+	 * Jump the northern calendar to a season quarter (debug). Uses Serene Seasons when
+	 * installed; otherwise adjusts {@code dayTime} on the fallback 10-day year.
+	 *
+	 * @return {@code true} when SS cycle ticks were set directly
+	 */
+	public static boolean setNorthernSeason(Level level, com.planetworld.debug.SeasonQuarter quarter) {
+		float progress = quarter.northernProgress();
+		if (SereneSeasonsCompat.isLoaded() && SereneSeasonsBridge.trySetNorthernSeasonProgress(level, progress)) {
+			return true;
+		}
+		if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
+			return false;
+		}
+		long yearTicks = (long) FALLBACK_YEAR_DAYS * LocalTime.DAY_LENGTH;
+		long target = (long) (progress * yearTicks);
+		long dayTime = server.getDayTime();
+		long base = (dayTime / yearTicks) * yearTicks;
+		server.setDayTime(base + target);
+		return false;
+	}
+
 	public static double latitude(Level level, double blockZ) {
 		if (level != null && WrapMath.isWrappedDimension(level)) {
 			DimensionTransformer t = level.getTransformer();
-			double half;
+			double period;
 			double z = blockZ;
 			if (t != null && t.isWrapped()) {
-				half = t.Coord.Z.domainLength * 0.5;
+				period = t.Coord.Z.domainLength;
 				z = t.Coord.Z.wrap(blockZ);
 			} else {
-				half = ContinentalClimate.periodBlocks() * 0.5;
-				z = ContinentalClimate.wrapToSignedHalf(blockZ, half * 2.0, half);
+				period = ContinentalClimate.periodBlocks();
+				z = ContinentalClimate.wrapToSignedHalf(blockZ, period, period * 0.5);
 			}
-			if (half > 1.0e-3) {
-				return Mth.clamp(z / half, -1.0, 1.0);
-			}
+			return Mth.clamp(com.planetworld.time.MeridianTracker.latitudeForPeriod(z, period), -1.0, 1.0);
 		}
 		return ContinentalClimate.latitude(blockZ);
 	}

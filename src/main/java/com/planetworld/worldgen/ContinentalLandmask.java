@@ -99,7 +99,7 @@ public final class ContinentalLandmask {
 		float raw = coarse + LAND_BIAS;
 		float land = Mth.clamp(smoothstep(-0.28f, 0.18f, raw), 0.0f, 1.0f);
 
-		float absLat = (float) Math.abs(z / half);
+		float absLat = (float) Math.abs(com.planetworld.time.MeridianTracker.latitude(z, period * 0.25));
 		float polar = Mth.clamp((absLat - 0.68f) / 0.30f, 0.0f, 1.0f);
 		polar = polar * polar * (3.0f - 2.0f * polar);
 		float polarNoise = OpenSimplex2S.noise2(worldSeed ^ SEED_MUSH, x / 160.0, z / 160.0);

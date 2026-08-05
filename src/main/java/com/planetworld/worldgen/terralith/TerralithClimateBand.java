@@ -1,8 +1,8 @@
 package com.planetworld.worldgen.terralith;
 
 /**
- * Climate bands for Terralith surface seeds. Latitudes are absolute (|z|/half):
- * both poles are cold; equator is tropical — matching Realism's torus climate.
+ * Climate bands for Terralith surface seeds. Latitudes are absolute triangle latitude
+ * (|φ| in {@code [0,1]}, poles at {@code |Z| = P/4}): both poles cold, equators tropical.
  */
 public enum TerralithClimateBand {
 	/** Both poles (|lat| high). */
@@ -26,7 +26,7 @@ public enum TerralithClimateBand {
 	/** Fantasy / skylands — optional. */
 	FANTASY(0.00f, 0.55f, 0.45f);
 
-	/** Absolute latitude band |z|/halfPeriod. */
+	/** Absolute triangle-latitude band; Z ≈ sign × absLat × (P/4). */
 	public final float absLatMin;
 	public final float absLatMax;
 	/** Minimum landFactor for inland bands; coastal uses as soft floor. */

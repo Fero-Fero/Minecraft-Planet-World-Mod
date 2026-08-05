@@ -56,7 +56,11 @@ public final class LocalizedWeatherHandler {
         if (!PlanetWorldConfig.enableLocalizedWeather() && !PlanetWorldConfig.enableLocalizedTime()) {
             return false;
         }
-        double absLat = Math.abs(SeasonAuthority.latitude(level, z));
+        double lat = SeasonAuthority.latitude(level, z);
+        if (com.planetworld.debug.CelestialDebugState.isForcedPolarStorm(level, lat)) {
+            return true;
+        }
+        double absLat = Math.abs(lat);
         if (absLat < POLAR_BLIZZARD_ABS_LAT) {
             return false;
         }

@@ -22,11 +22,12 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Slice;
 
 /**
- * Curvature scope for world draw, plus latitude sky tip.
+ * Curvature scope for world draw, plus latitude sky tip (+ fixed orbital obliquity).
  * <p>
  * Tip the polar axis (Z) <em>after</em> {@code YP(-90)} and <em>before</em>
  * {@code XP(time)} so the day cycle still spins the sun around a tipped axis.
- * Tip after XP with ~90° parks the disc on X and freezes motion.
+ * Tip uses folded latitude (0 at both equators); far-face opposite day comes from
+ * meridian-longitude in {@code getTimeOfDay}, not a 180° tip.
  */
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
@@ -102,14 +103,18 @@ public abstract class LevelRendererMixin {
 		return original * LocalSkyHandler.seasonSunScale();
 	}
 
-	/** Scale moon quad (vanilla 20) — 50% default. */
+	/** Scale moon quad (vanilla 20) — 50% default. Assignment is before {@code MOON_LOCATION} bind. */
 	@ModifyConstant(
 			method = "renderSky",
 			constant = @Constant(floatValue = 20.0F),
 			slice = @Slice(
 					from = @At(
-							value = "FIELD",
-							target = "Lnet/minecraft/client/renderer/LevelRenderer;MOON_LOCATION:Lnet/minecraft/resources/ResourceLocation;"
+							value = "INVOKE",
+							target = "Lnet/minecraft/client/multiplayer/ClientLevel;getRainLevel(F)F"
+					),
+					to = @At(
+							value = "INVOKE",
+							target = "Lnet/minecraft/client/multiplayer/ClientLevel;getStarBrightness(F)F"
 					)
 			)
 	)

@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Client sky / sun / moon use the shared world day clock (same for every player).
+ * Client sky / sun / moon use observer local angle (X longitude + meridian longitude).
  * Latitude tip is applied separately in {@code LevelRendererMixin}.
  */
 @Mixin(LevelTimeAccess.class)

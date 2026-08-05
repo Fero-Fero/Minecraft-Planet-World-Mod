@@ -5,9 +5,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * X-axis periodization helpers for a continuous planet strip.
+ * Torus wrap helpers for a continuous planet.
  * Players are never teleported — these map coordinates into one circumference
  * for terrain, time, and curvature only.
+ * <p>
+ * UI {@code planetCircumference} {@code C} is the wrap radius (half-period).
+ * Full period {@code P = 2C}. Geographic poles sit at {@code P/4 = C/2};
+ * the wrap seam at {@code ±C} is the far equator (opposite face), not a pole.
  */
 public final class WrapMath {
     private WrapMath() {
@@ -51,9 +55,18 @@ public final class WrapMath {
         return (int) Math.floor(wrapX(blockX));
     }
 
-    /** Full torus period in blocks (UI circumference is the half-period). */
+    /**
+     * Full torus period in blocks ({@code P = 2C}).
+     * UI circumference {@code C} is the half-period / wrap radius (= far-equator distance);
+     * geographic poles are at {@code C/2 = P/4}.
+     */
     public static double periodBlocks() {
         return PlanetWorldConfig.planetCircumference() * 2.0;
+    }
+
+    /** Equator→pole distance {@code P/4 = C/2}. */
+    public static double quarterPeriodBlocks() {
+        return periodBlocks() * 0.25;
     }
 
     /** Shortest signed delta on the wrapped circle from {@code fromX} to {@code toX}. */

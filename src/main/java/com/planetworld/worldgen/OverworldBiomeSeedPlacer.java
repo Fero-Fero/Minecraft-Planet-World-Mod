@@ -54,12 +54,13 @@ public final class OverworldBiomeSeedPlacer {
 			}
 			double period = ContinentalClimate.periodBlocks();
 			double half = period * 0.5;
+			double quarter = period * 0.25;
 			double[] best = null;
 			float bestLand = -1.0f;
 			for (int attempt = 0; attempt < 48; attempt++) {
 				long h = seed ^ (0xDA12F02E57L + attempt * 0x9E3779B97F4A7C15L);
 				double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
-				double cz = (((h >>> 25) & 0xFFFF) / 65535.0 - 0.5) * half * 0.7;
+				double cz = (((h >>> 25) & 0xFFFF) / 65535.0 - 0.5) * quarter * 0.7;
 				cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 				cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 				float land = ContinentalLandmask.landFactor(cx, cz, worldSeed);
@@ -130,6 +131,7 @@ public final class OverworldBiomeSeedPlacer {
 		HolderLookup.RegistryLookup<Biome> biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
 		List<ResourceKey<Biome>> keys = overworldBiomeKeys();
 		double half = period * 0.5;
+		double quarter = period * 0.25;
 		int n = keys.size();
 		int grid = Math.max(1, (int) Math.ceil(Math.sqrt(n)));
 		double cell = period / grid;
@@ -151,7 +153,7 @@ public final class OverworldBiomeSeedPlacer {
 			if (key == Biomes.DARK_FOREST) {
 				pos = ensureDarkForestOnLand(worldSeed);
 			} else {
-				pos = seedCenter(seed, i, key, period, half, grid, cell);
+				pos = seedCenter(seed, i, key, period, half, quarter, grid, cell);
 			}
 			xs[written] = pos[0];
 			zs[written] = pos[1];
@@ -189,6 +191,7 @@ public final class OverworldBiomeSeedPlacer {
 			ResourceKey<Biome> key,
 			double period,
 			double half,
+			double quarter,
 			int grid,
 			double cell
 	) {
@@ -202,16 +205,16 @@ public final class OverworldBiomeSeedPlacer {
 
 		float preference = climatePreference(key);
 		if (preference < -0.2f) {
-			// Cold biomes at either pole (|lat| high) — both poles are cold now.
+			// Cold biomes near geographic poles (|lat| high); poles at ±quarter.
 			boolean southPole = ((h >>> 3) & 1L) == 0L;
-			double mag = half * (0.55 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.40);
+			double mag = quarter * (0.55 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.40);
 			cz = southPole ? mag : -mag;
 		} else if (preference > 0.2f) {
 			// Warm / arid / tropical near the equator.
-			cz = Mth.clamp(cz, -half * 0.38, half * 0.38);
+			cz = Mth.clamp(cz, -quarter * 0.38, quarter * 0.38);
 			if (key == Biomes.DESERT || key == Biomes.BADLANDS || key == Biomes.WOODED_BADLANDS
 					|| key == Biomes.ERODED_BADLANDS || key == Biomes.SAVANNA || key == Biomes.SAVANNA_PLATEAU) {
-				double aridMag = half * (0.28 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.22);
+				double aridMag = quarter * (0.28 + (((h >>> 19) & 0xFFFF) / 65535.0) * 0.22);
 				cz = ((h >>> 5) & 1L) == 0L ? aridMag : -aridMag;
 			}
 		}

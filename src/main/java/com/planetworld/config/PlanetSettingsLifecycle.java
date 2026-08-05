@@ -1,6 +1,7 @@
 package com.planetworld.config;
 
 import com.planetworld.PlanetWorld;
+import com.planetworld.debug.CelestialDebugState;
 import com.planetworld.wrap.compat.create.CreateWrapMath;
 import com.planetworld.wrap.storage.TransformerRequests;
 import com.planetworld.network.SyncPlanetSettingsPayload;
@@ -199,6 +200,13 @@ public final class PlanetSettingsLifecycle {
 	}
 
 	@SubscribeEvent
+	public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+		if (event.getEntity() != null) {
+			com.planetworld.time.MeridianTracker.reset(event.getEntity().getUUID());
+		}
+	}
+
+	@SubscribeEvent
 	public static void onLevelUnload(LevelEvent.Unload event) {
 		// Do not null noiseLevel here — chunk workers may still sample during quit.
 		// Session clear happens in onServerStopping.
@@ -210,6 +218,7 @@ public final class PlanetSettingsLifecycle {
 		CreateWrapMath.clearHealSession();
 		PlanetSettingsAccess.clearActive();
 		PlanetSettingsAccess.clearPending();
+		CelestialDebugState.clearAll();
 		preloadedWrapBackup = null;
 	}
 

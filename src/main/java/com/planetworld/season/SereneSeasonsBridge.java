@@ -11,10 +11,14 @@ import net.minecraft.world.level.Level;
  */
 final class SereneSeasonsBridge {
 	private static final Object LOCK = new Object();
-	private static volatile boolean resolved;
+	private static volatile boolean readResolved;
+	private static volatile boolean writeResolved;
 	private static volatile java.lang.reflect.Method getSeasonState;
 	private static volatile java.lang.reflect.Method getSeasonCycleTicks;
 	private static volatile java.lang.reflect.Method getCycleDuration;
+	private static volatile java.lang.reflect.Method getSeasonSavedData;
+	private static volatile java.lang.reflect.Field seasonCycleTicksField;
+	private static volatile java.lang.reflect.Method sendSeasonUpdate;
 
 	private SereneSeasonsBridge() {
 	}
@@ -29,17 +33,25 @@ final class SereneSeasonsBridge {
 		if (!SereneSeasonsCompat.isLoaded()) {
 			return null;
 		}
-		ensureResolved();
-		if (getSeasonState == null || getSeasonCycleTicks == null || getCycleDuration == null) {
+		java.lang.reflect.Method stateMethod;
+		java.lang.reflect.Method cycleTicksMethod;
+		java.lang.reflect.Method cycleDurationMethod;
+		synchronized (LOCK) {
+			ensureReadResolved();
+			stateMethod = getSeasonState;
+			cycleTicksMethod = getSeasonCycleTicks;
+			cycleDurationMethod = getCycleDuration;
+		}
+		if (stateMethod == null || cycleTicksMethod == null || cycleDurationMethod == null) {
 			return null;
 		}
 		try {
-			Object state = getSeasonState.invoke(null, level);
+			Object state = stateMethod.invoke(null, level);
 			if (state == null) {
 				return null;
 			}
-			int ticks = ((Number) getSeasonCycleTicks.invoke(state)).intValue();
-			int cycle = ((Number) getCycleDuration.invoke(state)).intValue();
+			int ticks = ((Number) cycleTicksMethod.invoke(state)).intValue();
+			int cycle = ((Number) cycleDurationMethod.invoke(state)).intValue();
 			if (cycle <= 0) {
 				return null;
 			}
@@ -48,36 +60,90 @@ final class SereneSeasonsBridge {
 				progress = 0.0f;
 			}
 			return progress;
-		} catch (ReflectiveOperationException | ClassCastException ignored) {
+		} catch (ReflectiveOperationException | ClassCastException | NullPointerException ignored) {
 			return null;
 		}
 	}
 
-	private static void ensureResolved() {
-		if (resolved) {
-			// Mod may have been added after a failed resolve in the same JVM (dev hot-swap).
-			if (getSeasonState == null && SereneSeasonsCompat.isLoaded()) {
-				resolved = false;
-			} else {
-				return;
-			}
+	/** @return {@code true} when SS cycle ticks were updated. */
+	static boolean trySetNorthernSeasonProgress(Level level, float progress) {
+		if (!SereneSeasonsCompat.isLoaded()) {
+			return false;
 		}
+		java.lang.reflect.Method stateMethod;
+		java.lang.reflect.Method cycleDurationMethod;
+		java.lang.reflect.Method savedDataMethod;
+		java.lang.reflect.Field ticksField;
+		java.lang.reflect.Method updateMethod;
 		synchronized (LOCK) {
-			if (resolved && getSeasonState != null) {
-				return;
-			}
-			try {
-				Class<?> helper = Class.forName("sereneseasons.api.season.SeasonHelper");
-				getSeasonState = helper.getMethod("getSeasonState", Level.class);
-				Class<?> state = Class.forName("sereneseasons.api.season.ISeasonState");
-				getSeasonCycleTicks = state.getMethod("getSeasonCycleTicks");
-				getCycleDuration = state.getMethod("getCycleDuration");
-			} catch (ReflectiveOperationException ignored) {
-				getSeasonState = null;
-				getSeasonCycleTicks = null;
-				getCycleDuration = null;
-			}
-			resolved = true;
+			ensureReadResolved();
+			ensureWriteResolved();
+			stateMethod = getSeasonState;
+			cycleDurationMethod = getCycleDuration;
+			savedDataMethod = getSeasonSavedData;
+			ticksField = seasonCycleTicksField;
+			updateMethod = sendSeasonUpdate;
 		}
+		if (stateMethod == null || cycleDurationMethod == null
+				|| savedDataMethod == null || ticksField == null || updateMethod == null) {
+			return false;
+		}
+		try {
+			Object state = stateMethod.invoke(null, level);
+			if (state == null) {
+				return false;
+			}
+			int cycle = ((Number) cycleDurationMethod.invoke(state)).intValue();
+			if (cycle <= 0) {
+				return false;
+			}
+			float p = progress - (float) Math.floor(progress);
+			int ticks = Math.floorMod((int) (p * cycle), cycle);
+			Object savedData = savedDataMethod.invoke(null, level);
+			if (savedData == null) {
+				return false;
+			}
+			ticksField.setInt(savedData, ticks);
+			updateMethod.invoke(null, level);
+			return true;
+		} catch (ReflectiveOperationException | ClassCastException | NullPointerException ignored) {
+			return false;
+		}
+	}
+
+	private static void ensureReadResolved() {
+		if (readResolved) {
+			return;
+		}
+		try {
+			Class<?> helper = Class.forName("sereneseasons.api.season.SeasonHelper");
+			getSeasonState = helper.getMethod("getSeasonState", Level.class);
+			Class<?> state = Class.forName("sereneseasons.api.season.ISeasonState");
+			getSeasonCycleTicks = state.getMethod("getSeasonCycleTicks");
+			getCycleDuration = state.getMethod("getCycleDuration");
+		} catch (ReflectiveOperationException ignored) {
+			getSeasonState = null;
+			getSeasonCycleTicks = null;
+			getCycleDuration = null;
+		}
+		readResolved = true;
+	}
+
+	private static void ensureWriteResolved() {
+		if (writeResolved) {
+			return;
+		}
+		try {
+			Class<?> handler = Class.forName("sereneseasons.season.SeasonHandler");
+			getSeasonSavedData = handler.getMethod("getSeasonSavedData", Level.class);
+			sendSeasonUpdate = handler.getMethod("sendSeasonUpdate", Level.class);
+			Class<?> savedData = Class.forName("sereneseasons.season.SeasonSavedData");
+			seasonCycleTicksField = savedData.getField("seasonCycleTicks");
+		} catch (ReflectiveOperationException ignored) {
+			getSeasonSavedData = null;
+			sendSeasonUpdate = null;
+			seasonCycleTicksField = null;
+		}
+		writeResolved = true;
 	}
 }

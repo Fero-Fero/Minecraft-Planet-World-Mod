@@ -122,6 +122,7 @@ public final class TerralithBiomeSeedPlacer {
 
 		int n = holdersList.size();
 		double half = period * 0.5;
+		double quarter = period * 0.25;
 		long worldSeed = level.getSeed();
 		double[] xs = new double[n];
 		double[] zs = new double[n];
@@ -132,7 +133,7 @@ public final class TerralithBiomeSeedPlacer {
 		for (int i = 0; i < n; i++) {
 			TerralithClimateBand band = bands.get(i);
 			Holder<Biome> holder = holdersList.get(i);
-			double[] pos = placeInBand(seed, i, band, period, half, worldSeed);
+			double[] pos = placeInBand(seed, i, band, period, half, quarter, worldSeed);
 			xs[i] = pos[0];
 			zs[i] = pos[1];
 			radii[i] = band.isFantasy() ? RARE_RADIUS_BLOCKS : PATCH_RADIUS_BLOCKS;
@@ -150,6 +151,7 @@ public final class TerralithBiomeSeedPlacer {
 			TerralithClimateBand band,
 			double period,
 			double half,
+			double quarter,
 			long worldSeed
 	) {
 		double bestX = 0.0;
@@ -163,7 +165,7 @@ public final class TerralithBiomeSeedPlacer {
 					+ (((h >>> 25) & 0xFFFF) / 65535.0) * (band.absLatMax - band.absLatMin);
 			absLat = Mth.clamp((float) absLat, 0.0f, 0.98f);
 			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
-			double cz = sign * absLat * half;
+			double cz = sign * absLat * quarter;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 

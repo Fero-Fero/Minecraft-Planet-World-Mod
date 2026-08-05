@@ -383,14 +383,15 @@ public final class GuaranteedStructures {
 			double half,
 			Set<Long> usedChunks
 	) {
-		double[] best = new double[]{0.0, latMin * half};
+		double quarter = period * 0.25;
+		double[] best = new double[]{0.0, latMin * quarter};
 		float bestLand = -1.0f;
 		for (int attempt = 0; attempt < 64; attempt++) {
 			long h = mix(worldSeed, salt, attempt);
 			double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
 			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
 			double lat = latMin + t * (latMax - latMin);
-			double cz = lat * half;
+			double cz = lat * quarter;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 			ChunkPos chunk = toChunk(cx, cz);
@@ -419,7 +420,8 @@ public final class GuaranteedStructures {
 			double half,
 			Set<Long> usedChunks
 	) {
-		double[] best = new double[]{0.0, absLatMin * half};
+		double quarter = period * 0.25;
+		double[] best = new double[]{0.0, absLatMin * quarter};
 		float bestLand = -1.0f;
 		for (int attempt = 0; attempt < 64; attempt++) {
 			long h = mix(worldSeed, salt, attempt);
@@ -427,7 +429,7 @@ public final class GuaranteedStructures {
 			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
 			double absLat = absLatMin + t * (absLatMax - absLatMin);
 			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
-			double cz = sign * absLat * half;
+			double cz = sign * absLat * quarter;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 			ChunkPos chunk = toChunk(cx, cz);
@@ -455,14 +457,15 @@ public final class GuaranteedStructures {
 			double half,
 			Set<Long> usedChunks
 	) {
-		double[] best = new double[]{0.0, latMin * half};
+		double quarter = period * 0.25;
+		double[] best = new double[]{0.0, latMin * quarter};
 		float bestOcean = 2.0f;
 		for (int attempt = 0; attempt < 64; attempt++) {
 			long h = mix(worldSeed, salt, attempt);
 			double cx = ((h >>> 9) & 0xFFFF) / 65535.0 * period - half;
 			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
 			double lat = latMin + t * (latMax - latMin);
-			double cz = lat * half;
+			double cz = lat * quarter;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 			ChunkPos chunk = toChunk(cx, cz);
@@ -490,7 +493,8 @@ public final class GuaranteedStructures {
 			double half,
 			Set<Long> usedChunks
 	) {
-		double[] best = new double[]{0.0, absLatMin * half};
+		double quarter = period * 0.25;
+		double[] best = new double[]{0.0, absLatMin * quarter};
 		float bestOcean = 2.0f;
 		for (int attempt = 0; attempt < 64; attempt++) {
 			long h = mix(worldSeed, salt, attempt);
@@ -498,7 +502,7 @@ public final class GuaranteedStructures {
 			double t = ((h >>> 25) & 0xFFFF) / 65535.0;
 			double absLat = absLatMin + t * (absLatMax - absLatMin);
 			double sign = ((h >>> 7) & 1L) == 0L ? 1.0 : -1.0;
-			double cz = sign * absLat * half;
+			double cz = sign * absLat * quarter;
 			cx = ContinentalClimate.wrapToSignedHalf(cx, period, half);
 			cz = ContinentalClimate.wrapToSignedHalf(cz, period, half);
 			ChunkPos chunk = toChunk(cx, cz);

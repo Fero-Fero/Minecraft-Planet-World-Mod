@@ -11,9 +11,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.biome.Climate;
 
 /**
- * Realism climate on a torus: both Z-poles are cold (seamless wrap), equator is warm,
- * arid belts sit at mid-latitudes, and humidity uses smooth curves + noise so biomes
- * blend instead of striping into hard bands.
+ * Realism climate on a torus: geographic poles at {@code ±P/4} are cold, both equators
+ * (near at {@code Z≈0}, far at the wrap seam {@code ±C}) are warm, arid belts sit at
+ * mid-latitudes, and humidity uses smooth curves + noise so biomes blend.
  */
 public final class ContinentalClimate {
 	/**
@@ -52,14 +52,26 @@ public final class ContinentalClimate {
 	}
 
 	/**
-	 * Signed latitude in {@code [-1, 1]}: {@code 0} = equator, {@code ±1} = poles (Z wrap seam).
-	 * Both poles are cold so the torus seam is continuous.
+	 * Signed latitude in {@code [-1, 1]} via meridian triangle fold:
+	 * {@code 0} = equator, {@code ±1} = poles at {@code |Z| = P/4 = C/2}.
+	 * Far equator (wrap seam) folds back to {@code 0}.
 	 */
 	public static double latitude(double blockZ) {
 		double period = periodBlocks();
 		double half = period * 0.5;
+		double quarter = period * 0.25;
 		double z = wrapToSignedHalf(blockZ, period, half);
-		return z / half;
+		return com.planetworld.time.MeridianTracker.latitude(z, quarter);
+	}
+
+	/** Equator→pole block distance {@code P/4}. */
+	public static double quarterPeriod() {
+		return periodBlocks() * 0.25;
+	}
+
+	/** Wrap radius / far-equator distance {@code P/2 = C}. */
+	public static double halfPeriod() {
+		return periodBlocks() * 0.5;
 	}
 
 	public static Climate.TargetPoint remap(Climate.TargetPoint point, double blockX, double blockZ) {
@@ -73,11 +85,12 @@ public final class ContinentalClimate {
 
 		double period = periodBlocks();
 		double half = period * 0.5;
+		double quarter = period * 0.25;
 		double x = wrapToSignedHalf(blockX, period, half);
 		double z = wrapToSignedHalf(blockZ, period, half);
-		double lat = z / half; // -1 / +1 = poles (both cold), 0 = equator (hot)
+		double lat = com.planetworld.time.MeridianTracker.latitude(z, quarter);
 
-		// Earth-like on a torus: cos(π·lat) → +1 equator, −1 both poles (seamless at wrap).
+		// Earth-like: cos(π·lat) → +1 equator, −1 both poles (far equator folds to lat=0).
 		float climateTemp = (float) (Math.cos(Math.PI * lat) * 0.95);
 		temperature = Mth.clamp(Mth.lerp(TEMP_BLEND, temperature, climateTemp), -1.0f, 1.0f);
 

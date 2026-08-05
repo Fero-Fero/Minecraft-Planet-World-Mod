@@ -1,6 +1,7 @@
 package com.planetworld.polar;
 
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.debug.CelestialDebugState;
 import com.planetworld.season.SeasonAuthority;
 import com.planetworld.wrap.WrapMath;
 
@@ -42,12 +43,13 @@ public final class PolarHazardHandler {
 		double absLat = Math.abs(SeasonAuthority.latitude(level, player.getZ()));
 		boolean polar = absLat >= POLAR_ABS_LAT;
 		boolean winter = SeasonAuthority.isLocalWinter(level, player.getZ());
+		boolean forced = CelestialDebugState.isForcedPolarStorm(level, SeasonAuthority.latitude(level, player.getZ()));
 
 		if (player.tickCount % 80 == 0) {
 			scanNearbyFarmland(player);
 		}
 
-		if (!polar || !winter) {
+		if (!forced && (!polar || !winter)) {
 			return;
 		}
 
@@ -55,13 +57,15 @@ public final class PolarHazardHandler {
 			emphasizePowderSnow(player);
 		}
 
-		if (player.tickCount % 40 != 0) {
+		int freezeInterval = forced ? 10 : 40;
+		if (player.tickCount % freezeInterval != 0) {
 			return;
 		}
 		if (isWarmEnough(player)) {
 			return;
 		}
-		player.setTicksFrozen(Math.min(player.getTicksRequiredToFreeze() + 20, player.getTicksFrozen() + 15));
+		int freezeBoost = forced ? 35 : 15;
+		player.setTicksFrozen(Math.min(player.getTicksRequiredToFreeze() + 20, player.getTicksFrozen() + freezeBoost));
 	}
 
 	private static void scanNearbyFarmland(ServerPlayer player) {

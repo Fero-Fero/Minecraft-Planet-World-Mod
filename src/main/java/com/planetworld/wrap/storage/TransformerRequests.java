@@ -72,5 +72,6 @@ public class TransformerRequests {
 		com.planetworld.worldgen.RealismBiomeSources.clearCache();
 		com.planetworld.worldgen.ContinentalLandmask.clearCache();
 		com.planetworld.worldgen.ContinentalMountains.clearCache();
+		com.planetworld.time.MeridianTracker.resetAll();
 	}
 }

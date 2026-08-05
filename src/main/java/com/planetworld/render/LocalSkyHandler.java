@@ -3,6 +3,7 @@ package com.planetworld.render;
 import com.planetworld.config.PlanetWorldConfig;
 import com.planetworld.season.SeasonAuthority;
 import com.planetworld.time.LocalTime;
+import com.planetworld.time.MeridianTracker;
 import com.planetworld.wrap.WrapMath;
 import com.planetworld.wrap.core.DimensionTransformer;
 import net.minecraft.client.Minecraft;
@@ -12,8 +13,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 /**
- * Client sky: world-fixed sun/moon clock (same for every player) plus continuous
- * meridian tip so polar wrap crossings do not reverse the sky or horizon tint.
+ * Client sky: longitude + continuous meridian observer frame on a fixed orbital ring.
+ * Folded latitude tips the path (horizon at poles, overhead at both equators).
+ * Meridian-longitude ({@code tipTurns × ¼}) makes {@code Z = C} opposite day to home.
  */
 @OnlyIn(Dist.CLIENT)
 public final class LocalSkyHandler {
@@ -24,15 +26,20 @@ public final class LocalSkyHandler {
 	}
 
 	/**
-	 * Global day-cycle angle for sun/moon rendering — identical for all players.
-	 * Longitude-local time still drives gameplay ({@link LocalTime#isDay}, crops, spawn).
+	 * Observer day-cycle angle — world time ± X longitude ± continuous meridian longitude
+	 * ({@code tipTurns × ¼} so {@code Z = C} is opposite day to {@code Z = 0}).
 	 */
 	public static float localCelestialAngle() {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level == null) {
 			return 0f;
 		}
-		return LocalTime.worldCelestialAngle(mc.level);
+		if (mc.player == null
+				|| !PlanetWorldConfig.enableLocalizedTime()
+				|| !WrapMath.isWrappedDimension(mc.level)) {
+			return LocalTime.worldCelestialAngle(mc.level);
+		}
+		return LocalTime.observerCelestialAngle(mc.level, mc.player.getX(), continuousZ());
 	}
 
 	public static float localCelestialTiltDegrees() {
@@ -43,13 +50,15 @@ public final class LocalSkyHandler {
 		if (!PlanetWorldConfig.enableLocalizedTime() || !WrapMath.isWrappedDimension(mc.level)) {
 			return 0f;
 		}
-		return LocalTime.celestialTiltDegrees(mc.level, continuousLatitude());
+		DimensionTransformer t = mc.level.getTransformer();
+		double period = (t != null && t.isWrapped())
+				? t.Coord.Z.domainLength
+				: com.planetworld.worldgen.ContinentalClimate.periodBlocks();
+		return LocalTime.celestialTiltDegrees(mc.level, continuousZ(), MeridianTracker.quarterPeriod(period));
 	}
 
-	/**
-	 * Continuous meridian latitude for sky tip + fog (does not flip at the polar wrap seam).
-	 */
-	public static double continuousLatitude() {
+	/** Continuous meridian Z for the local player (updates unwrap state). */
+	public static double continuousZ() {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level == null || mc.player == null) {
 			return 0.0;
@@ -63,9 +72,23 @@ public final class LocalSkyHandler {
 		} else {
 			period = com.planetworld.worldgen.ContinentalClimate.periodBlocks();
 		}
-		double half = period * 0.5;
-		double continuousZ = ContinuousMeridian.continuousZ(wrappedZ, period);
-		return ContinuousMeridian.latitude(continuousZ, half);
+		return MeridianTracker.continuousZ(mc.player.getUUID(), wrappedZ, period);
+	}
+
+	/**
+	 * Folded geographic latitude for fog / climate (triangle). Sky tip uses
+	 * {@link #continuousZ()} via {@link LocalTime#celestialTiltDegrees(Level, double, double)}.
+	 */
+	public static double continuousLatitude() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null || mc.player == null) {
+			return 0.0;
+		}
+		DimensionTransformer t = mc.level.getTransformer();
+		double period = (t != null && t.isWrapped())
+				? t.Coord.Z.domainLength
+				: com.planetworld.worldgen.ContinentalClimate.periodBlocks();
+		return MeridianTracker.latitudeForPeriod(continuousZ(), period);
 	}
 
 	/** Sun disc scale: 50% of vanilla, then ±8% by northern calendar season. */
@@ -107,8 +130,6 @@ public final class LocalSkyHandler {
 			event.setGreen(event.getGreen() * 0.35f);
 			event.setBlue(event.getBlue() * 0.45f);
 		}
-		// Continuous latitude — wrapped Z would flip south↔north season at the pole seam
-		// and flash night fog into golden summer evening.
 		float warmth = SeasonAuthority.warmthAtLatitude(mc.level, continuousLatitude());
 		if (warmth < -0.15f) {
 			float t = Math.min(1f, -warmth);

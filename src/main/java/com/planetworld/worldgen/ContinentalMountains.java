@@ -125,8 +125,9 @@ public final class ContinentalMountains {
 			double[] xs = new double[count];
 			double[] zs = new double[count];
 			double[] radii = new double[count];
+			double quarter = period * 0.25;
 			for (int i = 0; i < count; i++) {
-				double[] center = pickCenter(worldSeed, i, period, half);
+				double[] center = pickCenter(worldSeed, i, period, half, quarter);
 				xs[i] = center[0];
 				zs[i] = center[1];
 				radii[i] = RADIUS_MIN + (RADIUS_MAX - RADIUS_MIN) * frac(mix(worldSeed, SEED_B, i));
@@ -137,14 +138,14 @@ public final class ContinentalMountains {
 		}
 	}
 
-	private static double[] pickCenter(long worldSeed, int index, double period, double half) {
+	private static double[] pickCenter(long worldSeed, int index, double period, double half, double quarter) {
 		for (int attempt = 0; attempt < 12; attempt++) {
 			double u = frac(mix(worldSeed, SEED_A, index * 17L + attempt));
 			double v = frac(mix(worldSeed, SEED_B, index * 31L + attempt * 3L));
 			double mx = (u - 0.5) * period;
 			double absLat = ABS_LAT_MIN + v * (ABS_LAT_MAX - ABS_LAT_MIN);
 			double sign = (mix(worldSeed, SEED_A, index + attempt) & 1L) == 0L ? 1.0 : -1.0;
-			double mz = sign * absLat * half;
+			double mz = sign * absLat * quarter;
 			if (ContinentalLandmask.landFactor(mx, mz, worldSeed) >= 0.5f) {
 				return new double[]{mx, mz};
 			}
@@ -153,7 +154,7 @@ public final class ContinentalMountains {
 		double v = frac(mix(worldSeed, SEED_B, index + 99L));
 		double absLat = ABS_LAT_MIN + v * (ABS_LAT_MAX - ABS_LAT_MIN);
 		double sign = (mix(worldSeed, SEED_B, index) & 1L) == 0L ? 1.0 : -1.0;
-		return new double[]{(u - 0.5) * period, sign * absLat * half};
+		return new double[]{(u - 0.5) * period, sign * absLat * quarter};
 	}
 
 	private static double torusDistance(double x, double z, double ox, double oz, double period) {

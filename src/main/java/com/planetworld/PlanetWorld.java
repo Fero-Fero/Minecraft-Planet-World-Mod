@@ -3,6 +3,8 @@ package com.planetworld;
 import com.mojang.logging.LogUtils;
 import com.planetworld.config.PlanetSettingsLifecycle;
 import com.planetworld.config.PlanetWorldConfig;
+import com.planetworld.debug.SeasonChangeLogger;
+import com.planetworld.debug.TimeSpeedHandler;
 import com.planetworld.network.SyncPlanetSettingsPayload;
 import com.planetworld.polar.PolarHazardHandler;
 import com.planetworld.sleep.SleepHandler;
@@ -42,6 +44,8 @@ public class PlanetWorld {
         NeoForge.EVENT_BUS.register(LocalizedWeatherHandler.class);
         NeoForge.EVENT_BUS.register(PolarHazardHandler.class);
         NeoForge.EVENT_BUS.register(PlanetSettingsLifecycle.class);
+        NeoForge.EVENT_BUS.register(TimeSpeedHandler.class);
+        NeoForge.EVENT_BUS.register(SeasonChangeLogger.class);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
